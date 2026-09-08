@@ -14,10 +14,11 @@ router.post('/', async (req, res, next) => {
   try {
     const { name } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre de la línea de servicio es requerido.' });
-    const { rows: countRows } = await pool.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM service_lines');
     const { rows } = await pool.query(
-      'INSERT INTO service_lines (name, sort_order) VALUES ($1, $2) RETURNING id, name, sort_order',
-      [name.trim(), countRows[0].next]
+      `INSERT INTO service_lines (name, sort_order)
+       SELECT $1, COALESCE(MAX(sort_order), -1) + 1 FROM service_lines
+       RETURNING id, name, sort_order`,
+      [name.trim()]
     );
     res.status(201).json(rows[0]);
   } catch (err) { next(err); }
