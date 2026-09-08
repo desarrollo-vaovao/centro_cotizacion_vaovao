@@ -103,30 +103,61 @@ Todos los endpoints requieren sesión válida excepto `POST /auth/login`.
 - `GET /service-lines`, `POST /service-lines`, `PATCH /service-lines/:id`,
   `DELETE /service-lines/:id`
 - `GET /quotations`, `POST /quotations`, `PATCH /quotations/:id` (cambios de estatus y
-  fechas), `POST /quotations/:id/adjust` (crea una nueva versión y marca la original como
-  `Sustituida`, misma lógica de versionado del mockup)
-- `GET /dashboard?period=&clientId=` — KPIs y agregados (tendencia mensual, cotizado por
-  cliente, líneas de servicio, ranking de ejecutivos) calculados en el backend, no en el
-  navegador — evita traer todas las cotizaciones al cliente para cada vista del dashboard.
-- `GET /settings/logos`, `PUT /settings/logos`
+  fechas — el estatus está validado contra una lista fija y `Sustituida` no se puede poner
+  directo por PATCH, solo vía `/adjust`), `POST /quotations/:id/adjust` (crea una nueva
+  versión y marca la original como `Sustituida`, misma lógica de versionado del mockup)
+- `GET /dashboard?period=` y `GET /dashboard/cliente/:clientId?period=` — dos endpoints
+  separados (no uno combinado) porque el dashboard principal y el detalle por cliente tienen
+  selectores de periodo independientes en el mockup. KPIs y agregados (tendencia mensual,
+  cotizado por cliente, líneas de servicio, ranking de ejecutivos) calculados en el backend,
+  no en el navegador — evita traer todas las cotizaciones al cliente para cada vista del
+  dashboard.
+- `GET /settings/logos`, `PUT /settings/logos`, `DELETE /settings/logos/:key` (`key` es
+  `agencia` o `velarc` — corresponde al botón "Quitar" del mockup)
 
 Esto reemplaza 1:1 las funciones del mockup que hoy leen/escriben en `window.storage`
-(`storeGet` / `storeSet`).
+(`storeGet` / `storeSet`). (Nota: esta sección se actualizó tras la implementación del backend
+para reflejar la forma final y verificada de la API — las dos diferencias respecto a la
+versión original de este documento son la separación del endpoint de dashboard en dos, y la
+adición de `DELETE /settings/logos/:key`.)
 
 ## 7. Estructura del frontend
 
+**Stack:**
+
+- **React + Vite** (SPA, sin SSR — confirmado en la sección 3).
+- **Tailwind CSS + shadcn/ui** para componentes (diálogos, selects, tablas, botones) —
+  reconstruye la misma paleta morada/naranja y tipografía Inter del mockup sobre una base de
+  componentes accesibles y mantenible, en vez de CSS plano copiado del prototipo.
+- **TanStack Query** para todas las llamadas a la API — maneja cache, refetch, y estados de
+  loading/error de forma consistente en las pantallas que ya comparten los mismos datos
+  (dashboard, historial, catálogo).
+- **React Router** para las rutas, con un wrapper de ruta protegida que redirige a `/login` si
+  no hay sesión (verificada vía `GET /auth/me` al cargar la app).
+- **Chart.js + react-chartjs-2** para las gráficas — mismo motor que ya usa el mockup (tipos de
+  gráfica, colores y comportamiento ya validados), con wrapper delgado para React.
+- **PDF**: se mantiene igual que el mockup — generación client-side con html2canvas + jsPDF,
+  sin involucrar al backend.
+
+**Estructura de carpetas:**
+
 ```
-src/
-  api/            # cliente fetch, un archivo por recurso (clients.js, quotations.js, auth.js...)
-  pages/          # Dashboard, NuevaCotizacion, Historial, FichaCliente, Catalogo, DocView, Login
-  components/     # KPI card, gráficas (wrappers de Chart.js), tabla, formularios reutilizables
-  context/        # AuthContext (usuario actual, login/logout)
-  App.jsx         # React Router: rutas protegidas redirigen a /login si no hay sesión
+frontend/
+  src/
+    api/            # un archivo por recurso (auth.js, clients.js, executives.js, serviceLines.js,
+                     # quotations.js, dashboard.js, settings.js) — funciones fetch + hooks de TanStack Query
+    pages/          # Login, Dashboard, NuevaCotizacion, Historial, FichaCliente, Catalogo, DocView
+    components/
+      ui/           # componentes shadcn/ui (button, dialog, select, table...)
+      charts/       # wrappers de Chart.js (StackedBarChart, DoughnutChart, HorizontalBarChart)
+      layout/       # Sidebar, ProtectedRoute
+      forms/        # formularios reutilizables (línea de detalle, selector de cliente/ejecutivo)
+    context/        # AuthContext (usuario actual, csrfToken, login/logout)
+    App.jsx         # React Router, rutas protegidas
 ```
 
 Mapea 1:1 a las vistas del mockup (`dashboard`, `nueva`/`ajustar`, `historial`, `ficha`,
-`catalogo`, `doc`) más una vista nueva de `Login`. Las gráficas siguen usando Chart.js, y el
-PDF sigue generándose con html2canvas + jsPDF, igual que en el mockup.
+`catalogo`, `doc`) más una vista nueva de `Login`.
 
 ## 8. Fases de construcción
 
