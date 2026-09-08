@@ -5,7 +5,10 @@ import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import { pool } from './db.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { requireAuth } from './middleware/auth.js';
+import { verifyCsrf } from './middleware/csrf.js';
 import authRoutes from './routes/auth.js';
+import clientsRoutes from './routes/clients.js';
 
 const PgSession = connectPgSimple(session);
 
@@ -35,6 +38,7 @@ export function createApp() {
 
   app.get('/health', (req, res) => res.json({ ok: true }));
   app.use('/auth', authRoutes);
+  app.use('/clients', requireAuth, verifyCsrf, clientsRoutes);
 
   app.use((req, res) => res.status(404).json({ error: 'No encontrado.' }));
   app.use(errorHandler);
