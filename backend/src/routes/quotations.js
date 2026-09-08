@@ -4,6 +4,20 @@ import { buildGeneralCorrelativo, buildClientCorrelativo, withVersionSuffix } fr
 
 const router = Router();
 
+// 'Sustituida' is deliberately excluded — that transition only happens
+// automatically via POST /:id/adjust, never via a direct client PATCH.
+const VALID_ESTATUS = ['Enviada', 'En Proceso - Cliente', 'Aprobada', 'Denegada'];
+
+// Normalizes a date-like field from a PATCH body:
+//   undefined -> undefined  (key not present in body — leave unchanged)
+//   null/''   -> null       (explicit clear)
+//   otherwise -> value      (a real date string)
+function normalizeDate(v) {
+  if (v === undefined) return undefined;
+  if (v === null || v === '') return null;
+  return v;
+}
+
 router.get('/', async (req, res, next) => {
   try {
     const { clientId, executiveId, estatus } = req.query;
@@ -19,7 +33,7 @@ router.get('/', async (req, res, next) => {
 });
 
 router.post('/', async (req, res, next) => {
-  const client = await pool.connect();
+  let client;
   try {
     const b = req.body;
     if (!b.clientId && !b.clienteNombreLibre) return res.status(400).json({ error: 'Selecciona o crea un cliente.' });
@@ -29,6 +43,7 @@ router.post('/', async (req, res, next) => {
     const monto = Number(b.monto);
     if (!monto || monto <= 0) return res.status(400).json({ error: 'Ingresa un monto válido.' });
 
+    client = await pool.connect();
     await client.query('BEGIN');
     const year = new Date().getFullYear();
     const settingsRes = await client.query('UPDATE settings SET general_seq = general_seq + 1 WHERE id = 1 RETURNING general_seq');
@@ -63,43 +78,60 @@ router.post('/', async (req, res, next) => {
     quotation.root_id = quotation.id;
     res.status(201).json(quotation);
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch { /* connection may already be dead */ }
+    }
     next(err);
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
 router.patch('/:id', async (req, res, next) => {
   try {
     const { estatus, fechaAprobacion, fechaCierreProyecto, observaciones } = req.body;
+
+    if (estatus !== undefined && estatus !== null && !VALID_ESTATUS.includes(estatus)) {
+      return res.status(400).json({ error: 'Estatus inválido. Usa /adjust para sustituir una cotización.' });
+    }
+
     const existing = await pool.query('SELECT * FROM quotations WHERE id = $1', [req.params.id]);
     if (!existing.rows[0]) return res.status(404).json({ error: 'Cotización no encontrada.' });
     if (existing.rows[0].estatus === 'Sustituida') {
       return res.status(409).json({ error: 'No se puede modificar una cotización sustituida.' });
     }
 
-    let nextFechaAprobacion = fechaAprobacion !== undefined ? fechaAprobacion : existing.rows[0].fecha_aprobacion;
+    const normalizedFechaAprobacion = normalizeDate(fechaAprobacion);
+    const normalizedFechaCierreProyecto = normalizeDate(fechaCierreProyecto);
+
+    let nextFechaAprobacion = normalizedFechaAprobacion !== undefined
+      ? normalizedFechaAprobacion
+      : existing.rows[0].fecha_aprobacion;
     if (estatus === 'Aprobada' && !nextFechaAprobacion) {
       nextFechaAprobacion = new Date().toISOString().slice(0, 10);
     }
+
+    const nextFechaCierreProyecto = normalizedFechaCierreProyecto !== undefined
+      ? normalizedFechaCierreProyecto
+      : existing.rows[0].fecha_cierre_proyecto;
 
     const { rows } = await pool.query(
       `UPDATE quotations SET
          estatus = COALESCE($1, estatus),
          fecha_aprobacion = $2,
-         fecha_cierre_proyecto = COALESCE($3, fecha_cierre_proyecto),
+         fecha_cierre_proyecto = $3,
          observaciones = COALESCE($4, observaciones)
        WHERE id = $5 RETURNING *`,
-      [estatus || null, nextFechaAprobacion, fechaCierreProyecto !== undefined ? fechaCierreProyecto : null, observaciones ?? null, req.params.id]
+      [estatus || null, nextFechaAprobacion, nextFechaCierreProyecto, observaciones || null, req.params.id]
     );
     res.json(rows[0]);
   } catch (err) { next(err); }
 });
 
 router.post('/:id/adjust', async (req, res, next) => {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     const srcRes = await client.query('SELECT * FROM quotations WHERE id = $1', [req.params.id]);
     const src = srcRes.rows[0];
     if (!src) return res.status(404).json({ error: 'Cotización no encontrada.' });
@@ -137,10 +169,12 @@ router.post('/:id/adjust', async (req, res, next) => {
     await client.query('COMMIT');
     res.status(201).json(newQuotation);
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch { /* connection may already be dead */ }
+    }
     next(err);
   } finally {
-    client.release();
+    client?.release();
   }
 });
 

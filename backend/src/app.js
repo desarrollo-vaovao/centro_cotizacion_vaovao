@@ -20,6 +20,13 @@ const PgSession = connectPgSimple(session);
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
+  // Railway (and Vercel) terminate TLS one hop upstream and forward plain HTTP,
+  // so Express must trust the X-Forwarded-* headers from that single proxy hop.
+  // Without this, req.secure/req.protocol never reflect X-Forwarded-Proto, which
+  // silently breaks secure session cookies (express-session refuses to set
+  // Set-Cookie when cookie.secure is true but req.secure is false) and breaks
+  // express-rate-limit's per-IP keying (falls back to the proxy's IP).
+  app.set('trust proxy', 1);
   app.use(helmet());
   app.use(cors({
     origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
