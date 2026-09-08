@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vv_user
+      POSTGRES_PASSWORD: vv_pass
+      POSTGRES_DB: vaovao_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - vaovao_pgdata:/var/lib/postgresql/data
+volumes:
+  vaovao_pgdata:
