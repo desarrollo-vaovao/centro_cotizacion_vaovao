@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { pool } from '../db.js';
 import { verifyPassword } from '../utils/password.js';
 import { createLoginLimiter } from '../middleware/rateLimit.js';
+import { verifyCsrf } from '../middleware/csrf.js';
 
 const router = Router();
 
@@ -26,7 +27,7 @@ router.post('/login', createLoginLimiter(), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/logout', (req, res, next) => {
+router.post('/logout', verifyCsrf, (req, res, next) => {
   if (!req.session) return res.json({ ok: true });
   req.session.destroy((err) => {
     if (err) return next(err);

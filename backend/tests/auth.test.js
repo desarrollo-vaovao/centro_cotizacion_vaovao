@@ -37,8 +37,8 @@ describe('auth', () => {
 
   it('clears the session on logout', async () => {
     const agent = makeAgent();
-    await agent.post('/auth/login').send({ email: 'test@vaovao.co', password: 'Test1234!' });
-    await agent.post('/auth/logout');
+    const loginRes = await agent.post('/auth/login').send({ email: 'test@vaovao.co', password: 'Test1234!' });
+    await agent.post('/auth/logout').set('X-CSRF-Token', loginRes.body.csrfToken);
     const res = await agent.get('/auth/me');
     expect(res.status).toBe(401);
   });
