@@ -51,4 +51,19 @@ describe('quotations update/adjust', () => {
     expect(originalRow.estatus).toBe('Sustituida');
     expect(originalRow.superseded_by).toBe(res.body.id);
   });
+
+  it('rejects adjusting a quotation that has already been superseded', async () => {
+    const { quotation, client, exec } = await createQuotation(agent, csrfToken);
+    const firstAdjust = await agent.post(`/quotations/${quotation.id}/adjust`).set('X-CSRF-Token', csrfToken).send({
+      clientId: client.id, pais: 'Guatemala', lineaServicio: 'Video', executiveId: exec.id,
+      proyecto: 'Contenidos ajustados', detalle: ['Edición', 'Dron'], monto: 3900, impuestos: 468
+    });
+    expect(firstAdjust.status).toBe(201);
+
+    const secondAdjust = await agent.post(`/quotations/${quotation.id}/adjust`).set('X-CSRF-Token', csrfToken).send({
+      clientId: client.id, pais: 'Guatemala', lineaServicio: 'Video', executiveId: exec.id,
+      proyecto: 'Otro ajuste', detalle: ['Edición'], monto: 4200, impuestos: 504
+    });
+    expect(secondAdjust.status).toBe(409);
+  });
 });

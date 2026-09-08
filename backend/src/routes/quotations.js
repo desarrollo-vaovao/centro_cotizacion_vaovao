@@ -103,6 +103,9 @@ router.post('/:id/adjust', async (req, res, next) => {
     const srcRes = await client.query('SELECT * FROM quotations WHERE id = $1', [req.params.id]);
     const src = srcRes.rows[0];
     if (!src) return res.status(404).json({ error: 'Cotización no encontrada.' });
+    if (src.estatus === 'Sustituida') {
+      return res.status(409).json({ error: 'No se puede ajustar una cotización ya sustituida.' });
+    }
 
     const b = req.body;
     if (!b.proyecto || !b.proyecto.trim()) return res.status(400).json({ error: 'Ingresa el nombre del proyecto.' });
