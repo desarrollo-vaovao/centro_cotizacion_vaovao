@@ -12,6 +12,7 @@ import clientsRoutes from './routes/clients.js';
 import executivesRoutes from './routes/executives.js';
 import serviceLinesRoutes from './routes/serviceLines.js';
 import quotationsRoutes from './routes/quotations.js';
+import dashboardRoutes from './routes/dashboard.js';
 
 const PgSession = connectPgSimple(session);
 
@@ -45,6 +46,7 @@ export function createApp() {
   app.use('/executives', requireAuth, verifyCsrf, executivesRoutes);
   app.use('/service-lines', requireAuth, verifyCsrf, serviceLinesRoutes);
   app.use('/quotations', requireAuth, verifyCsrf, quotationsRoutes);
+  app.use('/dashboard', requireAuth, dashboardRoutes);
 
   app.use((req, res) => res.status(404).json({ error: 'No encontrado.' }));
   app.use(errorHandler);
