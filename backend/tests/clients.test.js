@@ -46,4 +46,11 @@ describe('clients', () => {
     expect(res.status).toBe(200);
     expect(res.body.contact_name).toBe('Ana');
   });
+
+  it('does not clear contact fields with empty string', async () => {
+    const created = await agent.post('/clients').set('X-CSRF-Token', csrfToken).send({ name: 'Tengo Tienda', country: 'Guatemala', contactEmail: 'original@example.com' });
+    const res = await agent.patch(`/clients/${created.body.id}`).set('X-CSRF-Token', csrfToken).send({ contactEmail: '' });
+    expect(res.status).toBe(200);
+    expect(res.body.contact_email).toBe('original@example.com');
+  });
 });

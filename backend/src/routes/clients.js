@@ -47,7 +47,7 @@ router.patch('/:id', async (req, res, next) => {
          contact_phone = COALESCE($5, contact_phone)
        WHERE id = $6
        RETURNING id, code, name, country, contact_name, contact_email, contact_phone, seq`,
-      [name || null, country || null, contactName ?? null, contactEmail ?? null, contactPhone ?? null, req.params.id]
+      [name || null, country || null, contactName || null, contactEmail || null, contactPhone || null, req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Cliente no encontrado.' });
     res.json(rows[0]);
