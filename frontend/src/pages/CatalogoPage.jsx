@@ -121,9 +121,16 @@ function LogosPanel() {
   function onFileChange(key, file) {
     setError('');
     if (!file) return;
-    if (file.size > MAX_LOGO_BYTES) { setError('La imagen es muy pesada (máx. ~1.5MB).'); return; }
     const reader = new FileReader();
-    reader.onload = () => saveLogos.mutate({ [key]: reader.result });
+    reader.onload = () => {
+      if (reader.result.length > MAX_LOGO_BYTES) {
+        setError('La imagen es muy pesada (máx. ~1.5MB).');
+        return;
+      }
+      saveLogos.mutate({ [key]: reader.result }, {
+        onError: (err) => setError(err.message)
+      });
+    };
     reader.readAsDataURL(file);
   }
 

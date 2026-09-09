@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { CatalogoPage } from './CatalogoPage.jsx';
@@ -44,5 +44,49 @@ describe('CatalogoPage', () => {
     await userEvent.type(screen.getByLabelText('Nombre del ejecutivo'), 'Mishel Velez');
     await userEvent.click(screen.getByRole('button', { name: '+ Agregar ejecutivo' }));
     expect(api.post).toHaveBeenCalledWith('/executives', { name: 'Mishel Velez' });
+  });
+
+  it('uploads a logo whose base64 data URI fits the size limit', async () => {
+    api.put.mockResolvedValue({ logo_agencia: 'data:image/png;base64,AAAA', logo_velarc: null });
+    renderPage();
+    await screen.findByText('C807 Operador');
+
+    const file = new File(['a small logo'], 'logo.png', { type: 'image/png' });
+    const input = screen.getByLabelText('Subir Logo de la agencia');
+    await userEvent.upload(input, file);
+
+    await waitFor(() => expect(api.put).toHaveBeenCalled());
+    const [path, payload] = api.put.mock.calls[0];
+    expect(path).toBe('/settings/logos');
+    expect(payload.logoAgencia.startsWith('data:image/png;base64,')).toBe(true);
+    expect(screen.queryByText(/máx\. ~1\.5MB/)).not.toBeInTheDocument();
+  });
+
+  it('shows an error and does not save when the encoded logo exceeds the size limit', async () => {
+    renderPage();
+    await screen.findByText('C807 Operador');
+
+    // 1.5MB raw bytes → base64 encoding (~1.33x) plus the data URI prefix
+    // pushes the encoded string over MAX_LOGO_BYTES, even though the raw
+    // file itself is right at the limit.
+    const bigContent = 'x'.repeat(1.5 * 1024 * 1024);
+    const file = new File([bigContent], 'logo.png', { type: 'image/png' });
+    const input = screen.getByLabelText('Subir Logo de la agencia');
+    await userEvent.upload(input, file);
+
+    await waitFor(() => expect(screen.getByText(/máx\. ~1\.5MB/)).toBeInTheDocument());
+    expect(api.put).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a server-side rejection of the logo save via the onError callback', async () => {
+    api.put.mockRejectedValue(new Error('La imagen es muy pesada.'));
+    renderPage();
+    await screen.findByText('C807 Operador');
+
+    const file = new File(['a small logo'], 'logo.png', { type: 'image/png' });
+    const input = screen.getByLabelText('Subir Logo de la agencia');
+    await userEvent.upload(input, file);
+
+    await waitFor(() => expect(screen.getByText('La imagen es muy pesada.')).toBeInTheDocument());
   });
 });
