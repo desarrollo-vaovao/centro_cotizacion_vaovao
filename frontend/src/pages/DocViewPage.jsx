@@ -91,7 +91,9 @@ export function DocViewPage() {
           </div>
         </div>
         <div className="mt-6 text-center">
-          {logos?.logoVelarc && <img src={logos.logoVelarc} alt="Logo VELARC" className="mx-auto mb-1.5 h-[30px] w-[100px] object-contain" />}
+          {logos?.logoVelarc
+            ? <img src={logos.logoVelarc} alt="Logo VELARC" className="mx-auto mb-1.5 h-[30px] w-[100px] object-contain" />
+            : <div className="mx-auto mb-1.5 flex h-[30px] w-[100px] items-center justify-center rounded-lg border border-dashed border-border-strong text-[10.5px] text-text-secondary">Logo VELARC</div>}
           <div className="text-[9.5px] text-[#a9a49a]">Guatemala, Ciudad · 502 2509 2809 · info@grupovelarc.com</div>
         </div>
       </div>

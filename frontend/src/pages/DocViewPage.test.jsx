@@ -46,4 +46,10 @@ describe('DocViewPage', () => {
     expect(screen.getByText('Edición de 6 videos', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('Q3,472.00')).toBeInTheDocument();
   });
+
+  it('shows placeholder boxes when logos are missing', async () => {
+    renderPage();
+    expect(await screen.findByText('Logo agencia')).toBeInTheDocument();
+    expect(screen.getByText('Logo VELARC')).toBeInTheDocument();
+  });
 });
