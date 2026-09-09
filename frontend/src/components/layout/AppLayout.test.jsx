@@ -14,7 +14,7 @@ describe('AppLayout', () => {
     useAuth.mockReturnValue({ logout: vi.fn() });
   });
 
-  it('renders all four nav items', () => {
+  it('renders all five nav items', () => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
         <Routes>
@@ -27,6 +27,7 @@ describe('AppLayout', () => {
     expect(screen.getByRole('link', { name: 'Nueva cotización' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Historial' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ficha de cliente' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Configuración' })).toBeInTheDocument();
     expect(screen.getByText('Dashboard content')).toBeInTheDocument();
   });

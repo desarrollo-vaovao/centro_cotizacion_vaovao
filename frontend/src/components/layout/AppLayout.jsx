@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: '/nueva', label: 'Nueva cotización' },
   { to: '/historial', label: 'Historial' },
   { to: '/dashboard', label: 'Dashboard' },
+  { to: '/ficha', label: 'Ficha de cliente' },
   { to: '/catalogo', label: 'Configuración' }
 ];
 
