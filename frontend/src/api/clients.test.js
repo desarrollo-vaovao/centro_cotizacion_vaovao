@@ -2,10 +2,10 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import { useClients, useCreateClient } from './clients.js';
+import { useClients, useCreateClient, useDeleteClient } from './clients.js';
 import { api } from '../lib/apiClient.js';
 
-vi.mock('../lib/apiClient.js', () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn() } }));
+vi.mock('../lib/apiClient.js', () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() } }));
 
 function wrapper({ children }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -35,5 +35,16 @@ describe('useCreateClient', () => {
     const { result } = renderHook(() => useCreateClient(), { wrapper });
     await result.current.mutateAsync({ name: 'Tienda', country: 'Guatemala' });
     expect(api.post).toHaveBeenCalledWith('/clients', { name: 'Tienda', country: 'Guatemala' });
+  });
+});
+
+describe('useDeleteClient', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('deletes by id', async () => {
+    api.delete.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useDeleteClient(), { wrapper });
+    await result.current.mutateAsync(2);
+    expect(api.delete).toHaveBeenCalledWith('/clients/2');
   });
 });

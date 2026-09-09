@@ -36,3 +36,11 @@ export function useUpdateClient() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clients'] })
   });
 }
+
+export function useDeleteClient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/clients/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clients'] })
+  });
+}

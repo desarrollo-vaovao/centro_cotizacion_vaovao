@@ -37,6 +37,33 @@ describe('CatalogoPage', () => {
     expect(screen.getByDisplayValue('Video')).toBeInTheDocument();
   });
 
+  it('deletes a client after confirming', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    api.delete.mockResolvedValue(undefined);
+    renderPage();
+    await screen.findByText('C807 Operador');
+    await userEvent.click(screen.getByLabelText('Eliminar cliente C807 Operador'));
+    expect(window.confirm).toHaveBeenCalled();
+    expect(api.delete).toHaveBeenCalledWith('/clients/1');
+  });
+
+  it('does not delete a client when the confirmation is dismissed', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderPage();
+    await screen.findByText('C807 Operador');
+    await userEvent.click(screen.getByLabelText('Eliminar cliente C807 Operador'));
+    expect(api.delete).not.toHaveBeenCalled();
+  });
+
+  it('shows an error when a client cannot be deleted because it has quotations', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    api.delete.mockRejectedValue(new Error('No se puede eliminar: el cliente tiene cotizaciones asociadas.'));
+    renderPage();
+    await screen.findByText('C807 Operador');
+    await userEvent.click(screen.getByLabelText('Eliminar cliente C807 Operador'));
+    expect(await screen.findByText('No se puede eliminar: el cliente tiene cotizaciones asociadas.')).toBeInTheDocument();
+  });
+
   it('creates a new executive', async () => {
     api.post.mockResolvedValue({ id: 2, name: 'Mishel Velez' });
     renderPage();

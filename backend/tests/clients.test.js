@@ -53,4 +53,28 @@ describe('clients', () => {
     expect(res.status).toBe(200);
     expect(res.body.contact_email).toBe('original@example.com');
   });
+
+  it('deletes a client', async () => {
+    const created = await agent.post('/clients').set('X-CSRF-Token', csrfToken).send({ name: 'Tengo Tienda', country: 'Guatemala' });
+    const res = await agent.delete(`/clients/${created.body.id}`).set('X-CSRF-Token', csrfToken);
+    expect(res.status).toBe(204);
+    const list = await agent.get('/clients');
+    expect(list.body.map((c) => c.id)).not.toContain(created.body.id);
+  });
+
+  it('returns 404 when deleting a client that does not exist', async () => {
+    const res = await agent.delete('/clients/999999').set('X-CSRF-Token', csrfToken);
+    expect(res.status).toBe(404);
+  });
+
+  it('refuses to delete a client that has quotations', async () => {
+    const client = await agent.post('/clients').set('X-CSRF-Token', csrfToken).send({ name: 'Tengo Tienda', country: 'Guatemala' });
+    const exec = await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Marco Ramírez' });
+    await agent.post('/quotations').set('X-CSRF-Token', csrfToken).send({
+      clientId: client.body.id, pais: 'Guatemala', lineaServicio: 'Video', executiveId: exec.body.id,
+      proyecto: 'Contenidos', detalle: ['Edición de 6 videos'], monto: 100
+    });
+    const res = await agent.delete(`/clients/${client.body.id}`).set('X-CSRF-Token', csrfToken);
+    expect(res.status).toBe(409);
+  });
 });

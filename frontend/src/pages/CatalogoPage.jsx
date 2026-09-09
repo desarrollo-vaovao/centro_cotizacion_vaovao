@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useClients, useCreateClient } from '../api/clients.js';
+import { useClients, useCreateClient, useDeleteClient } from '../api/clients.js';
 import { useExecutives, useCreateExecutive } from '../api/executives.js';
 import { useServiceLines, useCreateServiceLine, useUpdateServiceLine, useDeleteServiceLine } from '../api/serviceLines.js';
 import { useLogos, useSaveLogos, useDeleteLogo } from '../api/settings.js';
@@ -14,6 +14,7 @@ const MAX_LOGO_BYTES = 1.5 * 1024 * 1024;
 function ClientsPanel() {
   const { data: clients = [] } = useClients();
   const createClient = useCreateClient();
+  const deleteClient = useDeleteClient();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [country, setCountry] = useState(COUNTRIES[0]);
@@ -27,15 +28,26 @@ function ClientsPanel() {
     } catch (err) { setError(err.message); }
   }
 
+  async function onDelete(client) {
+    setError('');
+    if (!window.confirm(`¿Eliminar el cliente "${client.name}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteClient.mutateAsync(client.id);
+    } catch (err) { setError(err.message); }
+  }
+
   return (
     <Card>
       <h2 className="mb-3 text-sm font-semibold">Clientes</h2>
       <table className="w-full text-sm">
-        <thead><tr className="text-left text-text-secondary"><th className="pb-2">Código</th><th>Nombre</th><th>País</th></tr></thead>
+        <thead><tr className="text-left text-text-secondary"><th className="pb-2">Código</th><th>Nombre</th><th>País</th><th></th></tr></thead>
         <tbody>
           {clients.map((c) => (
             <tr key={c.id} className="border-t border-border">
               <td className="py-1.5">{c.code}</td><td>{c.name}</td><td>{c.country}</td>
+              <td className="text-right">
+                <Button aria-label={`Eliminar cliente ${c.name}`} variant="danger" size="small" onClick={() => onDelete(c)}>×</Button>
+              </td>
             </tr>
           ))}
         </tbody>
