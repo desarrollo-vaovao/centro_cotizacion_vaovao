@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { authApi } from '../api/auth.js';
 import { setCsrfToken } from '../lib/csrfToken.js';
+import { onSessionExpired } from '../lib/sessionExpired.js';
 
 const AuthContext = createContext(null);
 
@@ -12,6 +13,14 @@ export function AuthProvider({ children }) {
     authApi.me()
       .then((data) => { setUser(data.user); setCsrfToken(data.csrfToken); setStatus('authenticated'); })
       .catch(() => { setStatus('anonymous'); });
+  }, []);
+
+  useEffect(() => {
+    onSessionExpired(() => {
+      setUser(null);
+      setCsrfToken(null);
+      setStatus('anonymous');
+    });
   }, []);
 
   const login = useCallback(async (email, password) => {

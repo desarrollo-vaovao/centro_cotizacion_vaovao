@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
 import { authApi } from '../api/auth.js';
+import { notifySessionExpired } from '../lib/sessionExpired.js';
 
 vi.mock('../api/auth.js', () => ({
   authApi: { me: vi.fn(), login: vi.fn(), logout: vi.fn() }
@@ -56,5 +57,16 @@ describe('AuthProvider', () => {
     logoutBtn.click();
 
     await waitFor(() => expect(screen.getByText(/status:anonymous/)).toBeInTheDocument());
+  });
+
+  it('flips to anonymous when notifySessionExpired is called (e.g. after a 401 on a protected request)', async () => {
+    authApi.me.mockResolvedValue({ user: { id: 1, email: 'a@vaovao.co' }, csrfToken: 'tok' });
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(screen.getByText(/status:authenticated/)).toBeInTheDocument());
+
+    act(() => { notifySessionExpired(); });
+
+    await waitFor(() => expect(screen.getByText(/status:anonymous/)).toBeInTheDocument());
+    expect(screen.getByText(/user:none/)).toBeInTheDocument();
   });
 });
