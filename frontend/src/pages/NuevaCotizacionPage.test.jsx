@@ -35,7 +35,7 @@ describe('NuevaCotizacionPage', () => {
 
   it('shows a validation error when submitting without a project name', async () => {
     renderPage();
-    await screen.findByText('C807 Operador (C807)');
+    await screen.findByText('C807 Operador');
     // Client and executive are selected first so the project-name check is
     // the one that actually fires — validation runs client, then executive,
     // then project, in that order, matching the backend's own order.
@@ -49,7 +49,7 @@ describe('NuevaCotizacionPage', () => {
   it('submits a valid quotation', async () => {
     api.post.mockResolvedValue({ id: 9, monto: '100', impuestos: '12' });
     renderPage();
-    await screen.findByText('C807 Operador (C807)');
+    await screen.findByText('C807 Operador');
     await userEvent.selectOptions(screen.getByLabelText('Cliente'), '1');
     await userEvent.selectOptions(screen.getByLabelText('Ejecutivo comercial'), '1');
     await userEvent.type(screen.getByLabelText('Proyecto'), 'Contenidos de agosto');
@@ -57,5 +57,37 @@ describe('NuevaCotizacionPage', () => {
     await userEvent.type(screen.getByLabelText('Monto (antes de impuestos)'), '100');
     await userEvent.click(screen.getByRole('button', { name: 'Generar cotización' }));
     expect(api.post).toHaveBeenCalledWith('/quotations', expect.objectContaining({ proyecto: 'Contenidos de agosto', clientId: '1', executiveId: '1' }));
+  });
+
+  it('creates a new client with code, country and contact fields, and shows no code in the client list', async () => {
+    api.post.mockImplementation((path) => {
+      if (path === '/clients') return Promise.resolve({ id: 2, code: 'TIENDA', name: 'Tengo Tienda', country: 'Honduras' });
+      return Promise.resolve({ id: 9, monto: '100', impuestos: '12' });
+    });
+    renderPage();
+    await screen.findByText('C807 Operador');
+    expect(screen.queryByText('C807 Operador (C807)')).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText('Cliente'), '__new__');
+    await userEvent.type(screen.getByLabelText('Nombre del cliente nuevo'), 'Tengo Tienda');
+    await userEvent.type(screen.getByLabelText('Código (fijo, no cambia luego)'), 'tienda');
+    await userEvent.selectOptions(screen.getByLabelText('País', { selector: '#f_nc_country' }), 'Honduras');
+    await userEvent.type(screen.getByLabelText('Contacto (opcional)'), 'Juana Pérez');
+    await userEvent.type(screen.getByLabelText('Correo (opcional)'), 'juana@tienda.com');
+    await userEvent.type(screen.getByLabelText('Teléfono (opcional)'), '5555-1234');
+    await userEvent.selectOptions(screen.getByLabelText('Ejecutivo comercial'), '1');
+    await userEvent.type(screen.getByLabelText('Proyecto'), 'Contenidos de agosto');
+    await userEvent.type(screen.getByPlaceholderText('Ej. Edición de 6 videos para redes sociales'), 'Edición');
+    await userEvent.type(screen.getByLabelText('Monto (antes de impuestos)'), '100');
+    await userEvent.click(screen.getByRole('button', { name: 'Generar cotización' }));
+
+    expect(api.post).toHaveBeenCalledWith('/clients', {
+      name: 'Tengo Tienda',
+      code: 'tienda',
+      country: 'Honduras',
+      contactName: 'Juana Pérez',
+      contactEmail: 'juana@tienda.com',
+      contactPhone: '5555-1234'
+    });
   });
 });

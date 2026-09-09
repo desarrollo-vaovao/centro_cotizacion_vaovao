@@ -27,6 +27,11 @@ export function NuevaCotizacionPage() {
 
   const [clientId, setClientId] = useState('');
   const [newClientName, setNewClientName] = useState('');
+  const [newClientCode, setNewClientCode] = useState('');
+  const [newClientCountry, setNewClientCountry] = useState(COUNTRIES[0]);
+  const [newClientContact, setNewClientContact] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
   const [pais, setPais] = useState(COUNTRIES[0]);
   const [lineaServicio, setLineaServicio] = useState('');
   const [executiveId, setExecutiveId] = useState('');
@@ -70,7 +75,14 @@ export function NuevaCotizacionPage() {
     if (clientId === '__new__') {
       if (!newClientName.trim()) { setError('Ingresa el nombre del cliente nuevo.'); return; }
       try {
-        const created = await createClient.mutateAsync({ name: newClientName, country: pais });
+        const created = await createClient.mutateAsync({
+          name: newClientName,
+          code: newClientCode,
+          country: newClientCountry,
+          contactName: newClientContact,
+          contactEmail: newClientEmail,
+          contactPhone: newClientPhone
+        });
         finalClientId = String(created.id);
       } catch (err) { setError(err.message); return; }
     } else if (!clientId) {
@@ -123,7 +135,7 @@ export function NuevaCotizacionPage() {
               <label htmlFor="f_cliente" className="mb-1 block text-xs font-medium text-text-secondary">Cliente</label>
               <Select id="f_cliente" value={clientId} onChange={(e) => setClientId(e.target.value)}>
                 <option value="">Selecciona un cliente…</option>
-                {clients.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 <option value="__new__">+ Nuevo cliente</option>
               </Select>
             </div>
@@ -135,7 +147,38 @@ export function NuevaCotizacionPage() {
             </div>
           </div>
           {clientId === '__new__' && (
-            <Input aria-label="Nombre del cliente nuevo" placeholder="Nombre del cliente nuevo" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label htmlFor="f_nc_name" className="mb-1 block text-xs font-medium text-text-secondary">Nombre del cliente nuevo</label>
+                  <Input id="f_nc_name" placeholder="Ej. Tengo Tienda" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="f_nc_code" className="mb-1 block text-xs font-medium text-text-secondary">Código (fijo, no cambia luego)</label>
+                  <Input id="f_nc_code" placeholder="Ej. TIENDA" value={newClientCode} onChange={(e) => setNewClientCode(e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="f_nc_country" className="mb-1 block text-xs font-medium text-text-secondary">País</label>
+                  <Select id="f_nc_country" value={newClientCountry} onChange={(e) => setNewClientCountry(e.target.value)}>
+                    {COUNTRIES.map((p) => <option key={p}>{p}</option>)}
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label htmlFor="f_nc_contact" className="mb-1 block text-xs font-medium text-text-secondary">Contacto (opcional)</label>
+                  <Input id="f_nc_contact" placeholder="Nombre de quien recibe la propuesta" value={newClientContact} onChange={(e) => setNewClientContact(e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="f_nc_email" className="mb-1 block text-xs font-medium text-text-secondary">Correo (opcional)</label>
+                  <Input id="f_nc_email" type="email" placeholder="correo@cliente.com" value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="f_nc_phone" className="mb-1 block text-xs font-medium text-text-secondary">Teléfono (opcional)</label>
+                  <Input id="f_nc_phone" placeholder="0000-0000" value={newClientPhone} onChange={(e) => setNewClientPhone(e.target.value)} />
+                </div>
+              </div>
+            </>
           )}
 
           <div className="grid grid-cols-2 gap-3">
