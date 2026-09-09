@@ -22,10 +22,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await authApi.logout();
-    setUser(null);
-    setCsrfToken(null);
-    setStatus('anonymous');
+    try {
+      await authApi.logout();
+    } finally {
+      setUser(null);
+      setCsrfToken(null);
+      setStatus('anonymous');
+    }
   }, []);
 
   return <AuthContext.Provider value={{ user, status, login, logout }}>{children}</AuthContext.Provider>;
