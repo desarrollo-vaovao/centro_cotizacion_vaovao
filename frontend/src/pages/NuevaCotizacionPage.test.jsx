@@ -35,7 +35,7 @@ describe('NuevaCotizacionPage', () => {
 
   it('shows a validation error when submitting without a project name', async () => {
     renderPage();
-    await screen.findByText('C807 Operador');
+    await screen.findByText('C807 Operador (C807)');
     // Client and executive are selected first so the project-name check is
     // the one that actually fires — validation runs client, then executive,
     // then project, in that order, matching the backend's own order.
@@ -49,7 +49,7 @@ describe('NuevaCotizacionPage', () => {
   it('submits a valid quotation', async () => {
     api.post.mockResolvedValue({ id: 9, monto: '100', impuestos: '12' });
     renderPage();
-    await screen.findByText('C807 Operador');
+    await screen.findByText('C807 Operador (C807)');
     await userEvent.selectOptions(screen.getByLabelText('Cliente'), '1');
     await userEvent.selectOptions(screen.getByLabelText('Ejecutivo comercial'), '1');
     await userEvent.type(screen.getByLabelText('Proyecto'), 'Contenidos de agosto');

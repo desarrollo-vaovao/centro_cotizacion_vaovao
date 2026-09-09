@@ -123,7 +123,7 @@ export function NuevaCotizacionPage() {
               <label htmlFor="f_cliente" className="mb-1 block text-xs font-medium text-text-secondary">Cliente</label>
               <Select id="f_cliente" value={clientId} onChange={(e) => setClientId(e.target.value)}>
                 <option value="">Selecciona un cliente…</option>
-                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {clients.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
                 <option value="__new__">+ Nuevo cliente</option>
               </Select>
             </div>
