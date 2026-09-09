@@ -11,6 +11,18 @@ import { Select } from '../components/ui/select.jsx';
 const COUNTRIES = ['Guatemala', 'El Salvador', 'Honduras', 'Nicaragua', 'Costa Rica', 'Panamá'];
 const MAX_LOGO_BYTES = 1.5 * 1024 * 1024;
 
+function TrashIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+      <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
+}
+
 function ClientsPanel() {
   const { data: clients = [] } = useClients();
   const createClient = useCreateClient();
@@ -46,7 +58,9 @@ function ClientsPanel() {
             <tr key={c.id} className="border-t border-border">
               <td className="py-1.5">{c.code}</td><td>{c.name}</td><td>{c.country}</td>
               <td className="text-right">
-                <Button aria-label={`Eliminar cliente ${c.name}`} variant="danger" size="small" onClick={() => onDelete(c)}>×</Button>
+                <Button aria-label={`Eliminar cliente ${c.name}`} variant="danger" size="small" className="px-2" onClick={() => onDelete(c)}>
+                  <TrashIcon />
+                </Button>
               </td>
             </tr>
           ))}
