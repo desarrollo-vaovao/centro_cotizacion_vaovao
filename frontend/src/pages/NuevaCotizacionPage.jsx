@@ -67,24 +67,38 @@ export function NuevaCotizacionPage() {
     setPopulatedForId(source.id);
   }
 
+  async function createNewClient() {
+    if (!newClientName.trim()) { setError('Ingresa el nombre del cliente nuevo.'); return null; }
+    try {
+      return await createClient.mutateAsync({
+        name: newClientName,
+        code: newClientCode,
+        country: newClientCountry,
+        contactName: newClientContact,
+        contactEmail: newClientEmail,
+        contactPhone: newClientPhone
+      });
+    } catch (err) { setError(err.message); return null; }
+  }
+
+  async function onSaveNewClient() {
+    setError('');
+    const created = await createNewClient();
+    if (!created) return;
+    setClientId(String(created.id));
+    setNewClientName(''); setNewClientCode(''); setNewClientCountry(COUNTRIES[0]);
+    setNewClientContact(''); setNewClientEmail(''); setNewClientPhone('');
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
 
     let finalClientId = clientId;
     if (clientId === '__new__') {
-      if (!newClientName.trim()) { setError('Ingresa el nombre del cliente nuevo.'); return; }
-      try {
-        const created = await createClient.mutateAsync({
-          name: newClientName,
-          code: newClientCode,
-          country: newClientCountry,
-          contactName: newClientContact,
-          contactEmail: newClientEmail,
-          contactPhone: newClientPhone
-        });
-        finalClientId = String(created.id);
-      } catch (err) { setError(err.message); return; }
+      const created = await createNewClient();
+      if (!created) return;
+      finalClientId = String(created.id);
     } else if (!clientId) {
       setError('Selecciona o crea un cliente.'); return;
     }
@@ -178,6 +192,9 @@ export function NuevaCotizacionPage() {
                   <Input id="f_nc_phone" placeholder="0000-0000" value={newClientPhone} onChange={(e) => setNewClientPhone(e.target.value)} />
                 </div>
               </div>
+              <Button type="button" size="small" className="self-start" disabled={createClient.isPending} onClick={onSaveNewClient}>
+                {createClient.isPending ? 'Guardando…' : 'Guardar cliente'}
+              </Button>
             </>
           )}
 

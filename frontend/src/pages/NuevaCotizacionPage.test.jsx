@@ -90,4 +90,55 @@ describe('NuevaCotizacionPage', () => {
       contactPhone: '5555-1234'
     });
   });
+
+  it('saves a new client on demand, without waiting for the quotation to be submitted', async () => {
+    // The client list is refetched (react-query invalidation) after the save,
+    // so the mock needs to actually grow to include the new client — a fixed
+    // canned response would leave the Cliente select with no matching option.
+    let clientsList = [{ id: 1, code: 'C807', name: 'C807 Operador', country: 'Guatemala', contact_name: null, contact_email: null, contact_phone: null, seq: 1 }];
+    api.get.mockImplementation((path) => {
+      if (path === '/clients') return Promise.resolve(clientsList);
+      if (path === '/executives') return Promise.resolve([{ id: 1, name: 'Marco Ramírez' }]);
+      if (path === '/service-lines') return Promise.resolve([{ id: 1, name: 'Video', sort_order: 0 }]);
+      return Promise.resolve([]);
+    });
+    api.post.mockImplementation((path) => {
+      if (path === '/clients') {
+        const created = { id: 2, code: 'TIENDA', name: 'Tengo Tienda', country: 'Guatemala', contact_name: null, contact_email: null, contact_phone: null, seq: 0 };
+        clientsList = [...clientsList, created];
+        return Promise.resolve(created);
+      }
+      return Promise.resolve({ id: 9, monto: '100', impuestos: '12' });
+    });
+    renderPage();
+    await screen.findByText('C807 Operador');
+
+    await userEvent.selectOptions(screen.getByLabelText('Cliente'), '__new__');
+    await userEvent.type(screen.getByLabelText('Nombre del cliente nuevo'), 'Tengo Tienda');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar cliente' }));
+
+    expect(api.post).toHaveBeenCalledWith('/clients', expect.objectContaining({ name: 'Tengo Tienda' }));
+    // The new-client fields disappear once saved — the select now points at
+    // the created client instead of staying on "+ Nuevo cliente".
+    expect(await screen.findByRole('option', { name: 'Tengo Tienda' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Nombre del cliente nuevo')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Cliente')).toHaveValue('2');
+  });
+
+  it('shows the server error inline when saving a new client fails', async () => {
+    api.post.mockImplementation((path) => {
+      if (path === '/clients') return Promise.reject(new Error('Ese código de cliente ya existe.'));
+      return Promise.resolve({});
+    });
+    renderPage();
+    await screen.findByText('C807 Operador');
+
+    await userEvent.selectOptions(screen.getByLabelText('Cliente'), '__new__');
+    await userEvent.type(screen.getByLabelText('Nombre del cliente nuevo'), 'Tengo Tienda');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar cliente' }));
+
+    expect(await screen.findByText('Ese código de cliente ya existe.')).toBeInTheDocument();
+    // The new-client block stays open so the user can fix and retry.
+    expect(screen.getByLabelText('Nombre del cliente nuevo')).toBeInTheDocument();
+  });
 });
