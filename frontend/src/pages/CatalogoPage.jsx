@@ -87,9 +87,12 @@ function ExecutivesPanel() {
   const [error, setError] = useState('');
 
   async function onAdd() {
+    setError('');
     if (!name.trim()) return;
-    await createExecutive.mutateAsync({ name });
-    setName('');
+    try {
+      await createExecutive.mutateAsync({ name });
+      setName('');
+    } catch (err) { setError(err.message); }
   }
 
   async function onDelete(executive) {
@@ -118,7 +121,9 @@ function ExecutivesPanel() {
         <Input id="ne_name" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
       {error && <p className="mt-1 text-xs text-danger">{error}</p>}
-      <Button className="mt-2" onClick={onAdd}>+ Agregar ejecutivo</Button>
+      <Button className="mt-2" disabled={createExecutive.isPending} onClick={onAdd}>
+        {createExecutive.isPending ? 'Guardando…' : 'Guardar ejecutivo'}
+      </Button>
     </Card>
   );
 }

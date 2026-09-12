@@ -69,8 +69,17 @@ describe('CatalogoPage', () => {
     renderPage();
     await screen.findByText('C807 Operador');
     await userEvent.type(screen.getByLabelText('Nombre del ejecutivo'), 'Mishel Velez');
-    await userEvent.click(screen.getByRole('button', { name: '+ Agregar ejecutivo' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar ejecutivo' }));
     expect(api.post).toHaveBeenCalledWith('/executives', { name: 'Mishel Velez' });
+  });
+
+  it('shows an error when saving a new executive fails', async () => {
+    api.post.mockRejectedValue(new Error('El nombre del ejecutivo es requerido.'));
+    renderPage();
+    await screen.findByText('C807 Operador');
+    await userEvent.type(screen.getByLabelText('Nombre del ejecutivo'), 'Mishel Velez');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar ejecutivo' }));
+    expect(await screen.findByText('El nombre del ejecutivo es requerido.')).toBeInTheDocument();
   });
 
   it('deletes an executive after confirming', async () => {
