@@ -64,6 +64,38 @@ describe('CatalogoPage', () => {
     expect(await screen.findByText('No se puede eliminar: el cliente tiene cotizaciones asociadas.')).toBeInTheDocument();
   });
 
+  it('saves a new client with code, country and contact fields', async () => {
+    api.post.mockResolvedValue({ id: 2, code: 'TIENDA', name: 'Tengo Tienda', country: 'Honduras', contact_name: 'Juana Pérez', contact_email: 'juana@tienda.com', contact_phone: '5555-1234', seq: 0 });
+    renderPage();
+    await screen.findByText('C807 Operador');
+
+    await userEvent.type(screen.getByLabelText('Nombre del cliente'), 'Tengo Tienda');
+    await userEvent.type(screen.getByLabelText('Código del cliente'), 'tienda');
+    await userEvent.selectOptions(screen.getByLabelText('País del cliente'), 'Honduras');
+    await userEvent.type(screen.getByLabelText('Contacto del cliente'), 'Juana Pérez');
+    await userEvent.type(screen.getByLabelText('Correo del cliente'), 'juana@tienda.com');
+    await userEvent.type(screen.getByLabelText('Teléfono del cliente'), '5555-1234');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar cliente' }));
+
+    expect(api.post).toHaveBeenCalledWith('/clients', {
+      name: 'Tengo Tienda',
+      code: 'tienda',
+      country: 'Honduras',
+      contactName: 'Juana Pérez',
+      contactEmail: 'juana@tienda.com',
+      contactPhone: '5555-1234'
+    });
+  });
+
+  it('shows an error when saving a new client fails', async () => {
+    api.post.mockRejectedValue(new Error('Ese código de cliente ya existe.'));
+    renderPage();
+    await screen.findByText('C807 Operador');
+    await userEvent.type(screen.getByLabelText('Nombre del cliente'), 'Tengo Tienda');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar cliente' }));
+    expect(await screen.findByText('Ese código de cliente ya existe.')).toBeInTheDocument();
+  });
+
   it('creates a new executive', async () => {
     api.post.mockResolvedValue({ id: 2, name: 'Mishel Velez' });
     renderPage();

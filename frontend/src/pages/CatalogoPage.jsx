@@ -30,13 +30,23 @@ function ClientsPanel() {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [country, setCountry] = useState(COUNTRIES[0]);
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
   const [error, setError] = useState('');
 
   async function onAdd() {
     setError('');
     try {
-      await createClient.mutateAsync({ name, code: code || undefined, country });
-      setName(''); setCode('');
+      await createClient.mutateAsync({
+        name,
+        code: code || undefined,
+        country,
+        contactName,
+        contactEmail,
+        contactPhone
+      });
+      setName(''); setCode(''); setContactName(''); setContactEmail(''); setContactPhone('');
     } catch (err) { setError(err.message); }
   }
 
@@ -73,8 +83,15 @@ function ClientsPanel() {
           {COUNTRIES.map((c) => <option key={c}>{c}</option>)}
         </Select>
       </div>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        <Input aria-label="Contacto del cliente" placeholder="Contacto (opcional)" value={contactName} onChange={(e) => setContactName(e.target.value)} />
+        <Input aria-label="Correo del cliente" type="email" placeholder="Correo (opcional)" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+        <Input aria-label="Teléfono del cliente" placeholder="Teléfono (opcional)" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
+      </div>
       {error && <p className="mt-1 text-xs text-danger">{error}</p>}
-      <Button className="mt-2" onClick={onAdd}>+ Agregar cliente</Button>
+      <Button className="mt-2" disabled={createClient.isPending} onClick={onAdd}>
+        {createClient.isPending ? 'Guardando…' : 'Guardar cliente'}
+      </Button>
     </Card>
   );
 }
