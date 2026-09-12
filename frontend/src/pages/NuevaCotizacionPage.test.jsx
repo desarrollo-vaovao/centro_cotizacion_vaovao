@@ -141,4 +141,53 @@ describe('NuevaCotizacionPage', () => {
     // The new-client block stays open so the user can fix and retry.
     expect(screen.getByLabelText('Nombre del cliente nuevo')).toBeInTheDocument();
   });
+
+  it('saves a new executive on demand, without waiting for the quotation to be submitted', async () => {
+    // Same reasoning as the new-client save test: react-query refetches the
+    // executives list after the mutation, so the mock needs to actually grow.
+    let executivesList = [{ id: 1, name: 'Marco Ramírez' }];
+    api.get.mockImplementation((path) => {
+      if (path === '/clients') return Promise.resolve([{ id: 1, code: 'C807', name: 'C807 Operador', country: 'Guatemala', contact_name: null, contact_email: null, contact_phone: null, seq: 1 }]);
+      if (path === '/executives') return Promise.resolve(executivesList);
+      if (path === '/service-lines') return Promise.resolve([{ id: 1, name: 'Video', sort_order: 0 }]);
+      return Promise.resolve([]);
+    });
+    api.post.mockImplementation((path) => {
+      if (path === '/executives') {
+        const created = { id: 2, name: 'Mishel Velez' };
+        executivesList = [...executivesList, created];
+        return Promise.resolve(created);
+      }
+      return Promise.resolve({ id: 9, monto: '100', impuestos: '12' });
+    });
+    renderPage();
+    await screen.findByText('C807 Operador');
+
+    await userEvent.selectOptions(screen.getByLabelText('Ejecutivo comercial'), '__new__');
+    await userEvent.type(screen.getByLabelText('Nombre del ejecutivo nuevo'), 'Mishel Velez');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar ejecutivo' }));
+
+    expect(api.post).toHaveBeenCalledWith('/executives', { name: 'Mishel Velez' });
+    // The new-executive field disappears once saved — the select now points
+    // at the created executive instead of staying on "+ Nuevo ejecutivo".
+    expect(await screen.findByRole('option', { name: 'Mishel Velez' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Nombre del ejecutivo nuevo')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Ejecutivo comercial')).toHaveValue('2');
+  });
+
+  it('shows the server error inline when saving a new executive fails', async () => {
+    api.post.mockImplementation((path) => {
+      if (path === '/executives') return Promise.reject(new Error('El nombre del ejecutivo es requerido.'));
+      return Promise.resolve({});
+    });
+    renderPage();
+    await screen.findByText('C807 Operador');
+
+    await userEvent.selectOptions(screen.getByLabelText('Ejecutivo comercial'), '__new__');
+    await userEvent.type(screen.getByLabelText('Nombre del ejecutivo nuevo'), 'Mishel Velez');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar ejecutivo' }));
+
+    expect(await screen.findByText('El nombre del ejecutivo es requerido.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nombre del ejecutivo nuevo')).toBeInTheDocument();
+  });
 });

@@ -12,3 +12,11 @@ export function useCreateExecutive() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['executives'] })
   });
 }
+
+export function useDeleteExecutive() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/executives/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['executives'] })
+  });
+}

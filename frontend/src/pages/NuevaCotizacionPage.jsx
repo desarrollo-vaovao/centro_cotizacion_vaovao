@@ -90,6 +90,21 @@ export function NuevaCotizacionPage() {
     setNewClientContact(''); setNewClientEmail(''); setNewClientPhone('');
   }
 
+  async function createNewExecutive() {
+    if (!newExecName.trim()) { setError('Ingresa el nombre del ejecutivo nuevo.'); return null; }
+    try {
+      return await createExecutive.mutateAsync({ name: newExecName });
+    } catch (err) { setError(err.message); return null; }
+  }
+
+  async function onSaveNewExecutive() {
+    setError('');
+    const created = await createNewExecutive();
+    if (!created) return;
+    setExecutiveId(String(created.id));
+    setNewExecName('');
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
@@ -105,11 +120,9 @@ export function NuevaCotizacionPage() {
 
     let finalExecutiveId = executiveId;
     if (executiveId === '__new__') {
-      if (!newExecName.trim()) { setError('Ingresa el nombre del ejecutivo nuevo.'); return; }
-      try {
-        const created = await createExecutive.mutateAsync({ name: newExecName });
-        finalExecutiveId = String(created.id);
-      } catch (err) { setError(err.message); return; }
+      const created = await createNewExecutive();
+      if (!created) return;
+      finalExecutiveId = String(created.id);
     } else if (!executiveId) {
       setError('Selecciona o crea un ejecutivo.'); return;
     }
@@ -215,7 +228,14 @@ export function NuevaCotizacionPage() {
             </div>
           </div>
           {executiveId === '__new__' && (
-            <Input aria-label="Nombre del ejecutivo nuevo" placeholder="Nombre completo" value={newExecName} onChange={(e) => setNewExecName(e.target.value)} />
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input aria-label="Nombre del ejecutivo nuevo" placeholder="Nombre completo" value={newExecName} onChange={(e) => setNewExecName(e.target.value)} />
+              </div>
+              <Button type="button" size="small" disabled={createExecutive.isPending} onClick={onSaveNewExecutive}>
+                {createExecutive.isPending ? 'Guardando…' : 'Guardar ejecutivo'}
+              </Button>
+            </div>
           )}
 
           <div>

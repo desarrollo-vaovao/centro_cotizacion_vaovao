@@ -73,6 +73,33 @@ describe('CatalogoPage', () => {
     expect(api.post).toHaveBeenCalledWith('/executives', { name: 'Mishel Velez' });
   });
 
+  it('deletes an executive after confirming', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    api.delete.mockResolvedValue(undefined);
+    renderPage();
+    await screen.findByText('Marco Ramírez');
+    await userEvent.click(screen.getByLabelText('Eliminar ejecutivo Marco Ramírez'));
+    expect(window.confirm).toHaveBeenCalled();
+    expect(api.delete).toHaveBeenCalledWith('/executives/1');
+  });
+
+  it('does not delete an executive when the confirmation is dismissed', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderPage();
+    await screen.findByText('Marco Ramírez');
+    await userEvent.click(screen.getByLabelText('Eliminar ejecutivo Marco Ramírez'));
+    expect(api.delete).not.toHaveBeenCalled();
+  });
+
+  it('shows an error when an executive cannot be deleted because it has quotations', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    api.delete.mockRejectedValue(new Error('No se puede eliminar: el ejecutivo tiene cotizaciones asociadas.'));
+    renderPage();
+    await screen.findByText('Marco Ramírez');
+    await userEvent.click(screen.getByLabelText('Eliminar ejecutivo Marco Ramírez'));
+    expect(await screen.findByText('No se puede eliminar: el ejecutivo tiene cotizaciones asociadas.')).toBeInTheDocument();
+  });
+
   it('uploads a logo whose base64 data URI fits the size limit', async () => {
     api.put.mockResolvedValue({ logo_agencia: 'data:image/png;base64,AAAA', logo_velarc: null });
     renderPage();

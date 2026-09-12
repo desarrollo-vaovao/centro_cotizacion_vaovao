@@ -19,4 +19,15 @@ router.post('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM executives WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Ejecutivo no encontrado.' });
+    res.status(204).end();
+  } catch (err) {
+    if (err.code === '23503') return res.status(409).json({ error: 'No se puede eliminar: el ejecutivo tiene cotizaciones asociadas.' });
+    next(err);
+  }
+});
+
 export default router;

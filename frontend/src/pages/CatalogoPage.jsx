@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useClients, useCreateClient, useDeleteClient } from '../api/clients.js';
-import { useExecutives, useCreateExecutive } from '../api/executives.js';
+import { useExecutives, useCreateExecutive, useDeleteExecutive } from '../api/executives.js';
 import { useServiceLines, useCreateServiceLine, useUpdateServiceLine, useDeleteServiceLine } from '../api/serviceLines.js';
 import { useLogos, useSaveLogos, useDeleteLogo } from '../api/settings.js';
 import { Card } from '../components/ui/card.jsx';
@@ -82,7 +82,9 @@ function ClientsPanel() {
 function ExecutivesPanel() {
   const { data: executives = [] } = useExecutives();
   const createExecutive = useCreateExecutive();
+  const deleteExecutive = useDeleteExecutive();
   const [name, setName] = useState('');
+  const [error, setError] = useState('');
 
   async function onAdd() {
     if (!name.trim()) return;
@@ -90,16 +92,32 @@ function ExecutivesPanel() {
     setName('');
   }
 
+  async function onDelete(executive) {
+    setError('');
+    if (!window.confirm(`¿Eliminar el ejecutivo "${executive.name}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteExecutive.mutateAsync(executive.id);
+    } catch (err) { setError(err.message); }
+  }
+
   return (
     <Card>
       <h2 className="mb-3 text-sm font-semibold">Ejecutivos</h2>
       <ul className="text-sm">
-        {executives.map((e) => <li key={e.id} className="border-t border-border py-1.5 first:border-t-0">{e.name}</li>)}
+        {executives.map((e) => (
+          <li key={e.id} className="flex items-center justify-between border-t border-border py-1.5 first:border-t-0">
+            <span>{e.name}</span>
+            <Button aria-label={`Eliminar ejecutivo ${e.name}`} variant="danger" size="small" className="px-2" onClick={() => onDelete(e)}>
+              <TrashIcon />
+            </Button>
+          </li>
+        ))}
       </ul>
       <div className="mt-3">
         <label htmlFor="ne_name" className="mb-1 block text-xs text-text-secondary">Nombre del ejecutivo</label>
         <Input id="ne_name" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
       <Button className="mt-2" onClick={onAdd}>+ Agregar ejecutivo</Button>
     </Card>
   );
