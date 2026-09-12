@@ -3,6 +3,7 @@ import { pool } from '../db.js';
 
 const router = Router();
 const PERIODS = ['mes', 'trimestre', 'semestre', 'año', 'todo'];
+const TREND_GRANULARITIES = ['semana', 'mes', 'trimestre'];
 
 function periodRange(period) {
   const now = new Date();
@@ -26,6 +27,49 @@ function toISO(d) {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+function startOfWeek(date) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const mondayOffset = (d.getDay() + 6) % 7; // Monday = 0 ... Sunday = 6
+  d.setDate(d.getDate() - mondayOffset);
+  return d;
+}
+
+// Builds a fixed number of consecutive [start, end) buckets ending at the
+// current period, in the requested granularity — the trend chart's x-axis
+// is always "however many of these fit nicely on screen", not a fixed
+// calendar window, so week/quarter granularities show a comparable span.
+function buildTrendBuckets(granularity) {
+  const now = new Date();
+  const buckets = [];
+  if (granularity === 'semana') {
+    const thisWeekStart = startOfWeek(now);
+    for (let i = 7; i >= 0; i--) {
+      const start = new Date(thisWeekStart);
+      start.setDate(start.getDate() - i * 7);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 7);
+      buckets.push({ label: toISO(start), start: toISO(start), end: toISO(end) });
+    }
+  } else if (granularity === 'trimestre') {
+    const currentQuarterIndex = now.getFullYear() * 4 + Math.floor(now.getMonth() / 3);
+    for (let i = 5; i >= 0; i--) {
+      const qIndex = currentQuarterIndex - i;
+      const y = Math.floor(qIndex / 4);
+      const q = ((qIndex % 4) + 4) % 4;
+      const start = new Date(y, q * 3, 1);
+      const end = new Date(y, q * 3 + 3, 1);
+      buckets.push({ label: `${y}-T${q + 1}`, start: toISO(start), end: toISO(end) });
+    }
+  } else {
+    for (let i = 5; i >= 0; i--) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      buckets.push({ label: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`, start: toISO(start), end: toISO(end) });
+    }
+  }
+  return buckets;
 }
 
 async function fetchPeriodQuotations(period, extraWhere = '', extraParams = []) {
@@ -107,20 +151,15 @@ router.get('/', async (req, res, next) => {
     const clientNames = Object.fromEntries(clientsRes.rows.map((c) => [c.id, c.name]));
     const execNames = Object.fromEntries(execRes.rows.map((e) => [e.id, e.name]));
 
-    const now = new Date();
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-    }
+    const trendGranularity = TREND_GRANULARITIES.includes(req.query.trendGranularity) ? req.query.trendGranularity : 'mes';
     const allActive = await pool.query(`SELECT fecha, monto, impuestos, estatus FROM quotations WHERE estatus != 'Sustituida'`);
-    const tendencia = months.map((m) => {
-      const inMonth = allActive.rows.filter((q) => q.fecha && q.fecha.slice(0, 7) === m);
+    const tendencia = buildTrendBuckets(trendGranularity).map(({ label, start, end }) => {
+      const inBucket = allActive.rows.filter((q) => q.fecha && q.fecha >= start && q.fecha < end);
       return {
-        month: m,
-        aprobado: inMonth.filter((q) => q.estatus === 'Aprobada').reduce((a, q) => a + money(q), 0),
-        enProceso: inMonth.filter((q) => q.estatus === 'Enviada' || q.estatus === 'En Proceso - Cliente').reduce((a, q) => a + money(q), 0),
-        denegado: inMonth.filter((q) => q.estatus === 'Denegada').reduce((a, q) => a + money(q), 0)
+        period: label,
+        aprobado: inBucket.filter((q) => q.estatus === 'Aprobada').reduce((a, q) => a + money(q), 0),
+        enProceso: inBucket.filter((q) => q.estatus === 'Enviada' || q.estatus === 'En Proceso - Cliente').reduce((a, q) => a + money(q), 0),
+        denegado: inBucket.filter((q) => q.estatus === 'Denegada').reduce((a, q) => a + money(q), 0)
       };
     });
 

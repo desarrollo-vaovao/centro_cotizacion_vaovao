@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { DashboardPage } from './DashboardPage.jsx';
 import { api } from '../lib/apiClient.js';
@@ -25,7 +26,7 @@ describe('DashboardPage', () => {
         lineas: [['Video', 3100]],
         clientes: [['C807 Operador', { count: 1, monto: 3100 }]],
         ejecutivos: [['Marco Ramírez', { count: 1, monto: 3100 }]],
-        tendencia: [{ month: '2026-07', aprobado: 3100, enProceso: 0, denegado: 0 }]
+        tendencia: [{ period: '2026-07', aprobado: 3100, enProceso: 0, denegado: 0 }]
       });
       return Promise.resolve([]);
     });
@@ -43,5 +44,15 @@ describe('DashboardPage', () => {
   it('renders the ranking of executives', async () => {
     renderPage();
     expect(await screen.findByText('Marco Ramírez')).toBeInTheDocument();
+  });
+
+  it('requests the trend at the selected granularity', async () => {
+    renderPage();
+    await screen.findAllByText('chart:bar');
+    expect(api.get).toHaveBeenCalledWith(expect.stringContaining('trendGranularity=mes'));
+
+    api.get.mockClear();
+    await userEvent.selectOptions(screen.getByLabelText('Agrupar tendencia por'), 'semana');
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith(expect.stringContaining('trendGranularity=semana')));
   });
 });

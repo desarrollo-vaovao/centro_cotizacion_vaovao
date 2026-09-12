@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/apiClient.js';
 
-export function useDashboard(period) {
+export function useDashboard(period, trendGranularity = 'mes') {
   return useQuery({
-    queryKey: ['dashboard', period],
-    queryFn: () => api.get(`/dashboard?period=${period}`)
+    queryKey: ['dashboard', period, trendGranularity],
+    queryFn: () => api.get(`/dashboard?period=${period}&trendGranularity=${trendGranularity}`)
   });
 }
 

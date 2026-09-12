@@ -52,4 +52,34 @@ describe('dashboard', () => {
     expect(res.body.count).toBe(1);
     expect(res.body.kpis.montoAprobado).toBe(1000);
   });
+
+  it('defaults the trend to 6 monthly buckets, with today\'s quotation in the last one', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: today, estatus: 'Aprobada', monto: 1000, impuestos: 0, lineaServicio: 'Video' });
+    const res = await agent.get('/dashboard').query({ period: 'todo' });
+    expect(res.body.tendencia).toHaveLength(6);
+    expect(res.body.tendencia.at(-1).aprobado).toBe(1000);
+    expect(res.body.tendencia.slice(0, 5).every((b) => b.aprobado === 0)).toBe(true);
+  });
+
+  it('buckets the trend weekly when trendGranularity=semana', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: today, estatus: 'Denegada', monto: 500, impuestos: 0, lineaServicio: 'Video' });
+    const res = await agent.get('/dashboard').query({ period: 'todo', trendGranularity: 'semana' });
+    expect(res.body.tendencia).toHaveLength(8);
+    expect(res.body.tendencia.at(-1).denegado).toBe(500);
+  });
+
+  it('buckets the trend quarterly when trendGranularity=trimestre', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: today, estatus: 'Enviada', monto: 200, impuestos: 0, lineaServicio: 'Video' });
+    const res = await agent.get('/dashboard').query({ period: 'todo', trendGranularity: 'trimestre' });
+    expect(res.body.tendencia).toHaveLength(6);
+    expect(res.body.tendencia.at(-1).enProceso).toBe(200);
+  });
+
+  it('falls back to monthly buckets for an invalid trendGranularity', async () => {
+    const res = await agent.get('/dashboard').query({ period: 'todo', trendGranularity: 'nope' });
+    expect(res.body.tendencia).toHaveLength(6);
+  });
 });

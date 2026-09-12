@@ -12,9 +12,14 @@ const PERIODS = [
   ['mes', 'Mensual'], ['trimestre', 'Trimestral'], ['semestre', 'Semestral'], ['año', 'Anual'], ['todo', 'Todo']
 ];
 
+const TREND_GRANULARITIES = [
+  ['semana', 'Semanal'], ['mes', 'Mensual'], ['trimestre', 'Trimestral']
+];
+
 export function DashboardPage() {
   const [period, setPeriod] = useState('mes');
-  const { data } = useDashboard(period);
+  const [trendGranularity, setTrendGranularity] = useState('mes');
+  const { data } = useDashboard(period, trendGranularity);
 
   return (
     <div>
@@ -35,7 +40,12 @@ export function DashboardPage() {
             <KpiCard label="Tasa de aprobación" value={data.kpis.tasa !== null ? `${data.kpis.tasa}%` : '—'} />
           </div>
           <Card className="mb-4">
-            <h2 className="mb-3 text-sm font-semibold">Tendencia — últimos 6 meses</h2>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Tendencia</h2>
+              <Select aria-label="Agrupar tendencia por" className="w-auto" value={trendGranularity} onChange={(e) => setTrendGranularity(e.target.value)}>
+                {TREND_GRANULARITIES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </Select>
+            </div>
             <TrendChart data={data.tendencia} />
           </Card>
           <div className="mb-4 grid grid-cols-3 gap-3">
