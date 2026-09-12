@@ -46,20 +46,17 @@ describe('DashboardPage', () => {
     expect(await screen.findByText('Marco Ramírez')).toBeInTheDocument();
   });
 
-  it('requests the trend at the selected granularity', async () => {
+  it('does not show a separate trend granularity control — it follows the period picked above', async () => {
     renderPage();
     await screen.findAllByText('chart:bar');
-    expect(api.get).toHaveBeenCalledWith(expect.stringContaining('trendGranularity=mes'));
-
-    api.get.mockClear();
-    await userEvent.selectOptions(screen.getByLabelText('Agrupar tendencia por'), 'semana');
-    await waitFor(() => expect(api.get).toHaveBeenCalledWith(expect.stringContaining('trendGranularity=semana')));
+    expect(screen.queryByLabelText('Agrupar tendencia por')).not.toBeInTheDocument();
   });
 
-  it('sends the picked reference date and re-labels the picker per period', async () => {
+  it('sends the picked period and reference date, re-labeling the date picker per period', async () => {
     renderPage();
     await screen.findAllByText('chart:bar');
     expect(screen.getByText('Mes de')).toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledWith(expect.stringContaining('period=mes'));
 
     api.get.mockClear();
     const dateInput = document.getElementById('dash_refdate');
@@ -67,8 +64,10 @@ describe('DashboardPage', () => {
     await userEvent.type(dateInput, '2026-01-15');
     await waitFor(() => expect(api.get).toHaveBeenCalledWith(expect.stringContaining('refDate=2026-01-15')));
 
+    api.get.mockClear();
     await userEvent.selectOptions(screen.getByLabelText('Periodo'), 'semana');
     expect(screen.getByText('Semana de')).toBeInTheDocument();
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith(expect.stringContaining('period=semana')));
   });
 
   it('hides the reference-date picker when the period is "todo"', async () => {

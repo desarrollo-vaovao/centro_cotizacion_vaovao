@@ -13,17 +13,14 @@ const PERIODS = [
   ['semana', 'Semanal'], ['mes', 'Mensual'], ['trimestre', 'Trimestral'], ['semestre', 'Semestral'], ['año', 'Anual'], ['todo', 'Todo']
 ];
 
-const TREND_GRANULARITIES = [
-  ['semana', 'Semanal'], ['mes', 'Mensual'], ['trimestre', 'Trimestral']
-];
-
 function todayIso() { return new Date().toISOString().slice(0, 10); }
 
 export function DashboardPage() {
   const [period, setPeriod] = useState('mes');
   const [refDate, setRefDate] = useState(todayIso);
-  const [trendGranularity, setTrendGranularity] = useState('mes');
-  const { data } = useDashboard(period, trendGranularity, refDate);
+  // The trend chart has no filter of its own — it follows the period/refDate
+  // picked above (semestre/año/todo fall back to monthly buckets server-side).
+  const { data } = useDashboard(period, refDate);
 
   return (
     <div>
@@ -54,12 +51,7 @@ export function DashboardPage() {
             <KpiCard label="Tasa de aprobación" value={data.kpis.tasa !== null ? `${data.kpis.tasa}%` : '—'} />
           </div>
           <Card className="mb-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Tendencia</h2>
-              <Select aria-label="Agrupar tendencia por" className="w-auto" value={trendGranularity} onChange={(e) => setTrendGranularity(e.target.value)}>
-                {TREND_GRANULARITIES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </Select>
-            </div>
+            <h2 className="mb-3 text-sm font-semibold">Tendencia</h2>
             <TrendChart data={data.tendencia} />
           </Card>
           <div className="mb-4 grid grid-cols-3 gap-3">

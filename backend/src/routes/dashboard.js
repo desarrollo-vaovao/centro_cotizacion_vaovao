@@ -3,7 +3,10 @@ import { pool } from '../db.js';
 
 const router = Router();
 const PERIODS = ['semana', 'mes', 'trimestre', 'semestre', 'año', 'todo'];
-const TREND_GRANULARITIES = ['semana', 'mes', 'trimestre'];
+// The trend chart has no filter of its own — it follows whatever period the
+// user picked up top. semestre/año/todo have no matching trend granularity,
+// so they fall back to monthly buckets (the most useful default span).
+const TREND_GRANULARITY_BY_PERIOD = { semana: 'semana', mes: 'mes', trimestre: 'trimestre' };
 
 function toISO(d) {
   if (!d) return null;
@@ -56,8 +59,8 @@ function periodRange(period, refDate = new Date()) {
 // current period, in the requested granularity — the trend chart's x-axis
 // is always "however many of these fit nicely on screen", not a fixed
 // calendar window, so week/quarter granularities show a comparable span.
-function buildTrendBuckets(granularity) {
-  const now = new Date();
+function buildTrendBuckets(granularity, refDate = new Date()) {
+  const now = refDate;
   const buckets = [];
   if (granularity === 'semana') {
     const thisWeekStart = startOfWeek(now);
@@ -168,9 +171,9 @@ router.get('/', async (req, res, next) => {
     const clientNames = Object.fromEntries(clientsRes.rows.map((c) => [c.id, c.name]));
     const execNames = Object.fromEntries(execRes.rows.map((e) => [e.id, e.name]));
 
-    const trendGranularity = TREND_GRANULARITIES.includes(req.query.trendGranularity) ? req.query.trendGranularity : 'mes';
+    const trendGranularity = TREND_GRANULARITY_BY_PERIOD[period] || 'mes';
     const allActive = await pool.query(`SELECT fecha, monto, impuestos, estatus FROM quotations WHERE estatus != 'Sustituida'`);
-    const tendencia = buildTrendBuckets(trendGranularity).map(({ label, start, end }) => {
+    const tendencia = buildTrendBuckets(trendGranularity, refDate).map(({ label, start, end }) => {
       const inBucket = allActive.rows.filter((q) => q.fecha && q.fecha >= start && q.fecha < end);
       return {
         period: label,

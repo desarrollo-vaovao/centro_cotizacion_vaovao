@@ -17,16 +17,16 @@ describe('useDashboard', () => {
 
   it('omits refDate when none is given', async () => {
     api.get.mockResolvedValue({ tendencia: [] });
-    const { result } = renderHook(() => useDashboard('mes', 'mes'), { wrapper });
+    const { result } = renderHook(() => useDashboard('mes'), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(api.get).toHaveBeenCalledWith('/dashboard?period=mes&trendGranularity=mes');
+    expect(api.get).toHaveBeenCalledWith('/dashboard?period=mes');
   });
 
   it('includes refDate when given', async () => {
     api.get.mockResolvedValue({ tendencia: [] });
-    const { result } = renderHook(() => useDashboard('semana', 'mes', '2026-03-10'), { wrapper });
+    const { result } = renderHook(() => useDashboard('semana', '2026-03-10'), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(api.get).toHaveBeenCalledWith('/dashboard?period=semana&trendGranularity=mes&refDate=2026-03-10');
+    expect(api.get).toHaveBeenCalledWith('/dashboard?period=semana&refDate=2026-03-10');
   });
 });
 

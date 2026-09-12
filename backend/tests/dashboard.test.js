@@ -62,25 +62,37 @@ describe('dashboard', () => {
     expect(res.body.tendencia.slice(0, 5).every((b) => b.aprobado === 0)).toBe(true);
   });
 
-  it('buckets the trend weekly when trendGranularity=semana', async () => {
+  it('follows the period into weekly trend buckets when period=semana', async () => {
     const today = new Date().toISOString().slice(0, 10);
     await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: today, estatus: 'Denegada', monto: 500, impuestos: 0, lineaServicio: 'Video' });
-    const res = await agent.get('/dashboard').query({ period: 'todo', trendGranularity: 'semana' });
+    const res = await agent.get('/dashboard').query({ period: 'semana' });
     expect(res.body.tendencia).toHaveLength(8);
     expect(res.body.tendencia.at(-1).denegado).toBe(500);
   });
 
-  it('buckets the trend quarterly when trendGranularity=trimestre', async () => {
+  it('follows the period into quarterly trend buckets when period=trimestre', async () => {
     const today = new Date().toISOString().slice(0, 10);
     await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: today, estatus: 'Enviada', monto: 200, impuestos: 0, lineaServicio: 'Video' });
-    const res = await agent.get('/dashboard').query({ period: 'todo', trendGranularity: 'trimestre' });
+    const res = await agent.get('/dashboard').query({ period: 'trimestre' });
     expect(res.body.tendencia).toHaveLength(6);
     expect(res.body.tendencia.at(-1).enProceso).toBe(200);
   });
 
-  it('falls back to monthly buckets for an invalid trendGranularity', async () => {
-    const res = await agent.get('/dashboard').query({ period: 'todo', trendGranularity: 'nope' });
-    expect(res.body.tendencia).toHaveLength(6);
+  it('falls back to monthly trend buckets for periods with no matching granularity', async () => {
+    const resSemestre = await agent.get('/dashboard').query({ period: 'semestre' });
+    expect(resSemestre.body.tendencia).toHaveLength(6);
+    const resAnio = await agent.get('/dashboard').query({ period: 'año' });
+    expect(resAnio.body.tendencia).toHaveLength(6);
+  });
+
+  it('anchors the trend window to refDate, not just today', async () => {
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+    const lastMonthIso = lastMonth.toISOString().slice(0, 10);
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: lastMonthIso, estatus: 'Aprobada', monto: 700, impuestos: 0, lineaServicio: 'Video' });
+
+    const res = await agent.get('/dashboard').query({ period: 'mes', refDate: lastMonthIso });
+    expect(res.body.tendencia.at(-1).aprobado).toBe(700);
   });
 
   it('lets refDate pick which month to view, excluding it from the default (today-anchored) month', async () => {
