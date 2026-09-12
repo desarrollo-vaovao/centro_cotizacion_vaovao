@@ -55,4 +55,26 @@ describe('DashboardPage', () => {
     await userEvent.selectOptions(screen.getByLabelText('Agrupar tendencia por'), 'semana');
     await waitFor(() => expect(api.get).toHaveBeenCalledWith(expect.stringContaining('trendGranularity=semana')));
   });
+
+  it('sends the picked reference date and re-labels the picker per period', async () => {
+    renderPage();
+    await screen.findAllByText('chart:bar');
+    expect(screen.getByText('Mes de')).toBeInTheDocument();
+
+    api.get.mockClear();
+    const dateInput = document.getElementById('dash_refdate');
+    await userEvent.clear(dateInput);
+    await userEvent.type(dateInput, '2026-01-15');
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith(expect.stringContaining('refDate=2026-01-15')));
+
+    await userEvent.selectOptions(screen.getByLabelText('Periodo'), 'semana');
+    expect(screen.getByText('Semana de')).toBeInTheDocument();
+  });
+
+  it('hides the reference-date picker when the period is "todo"', async () => {
+    renderPage();
+    await screen.findAllByText('chart:bar');
+    await userEvent.selectOptions(screen.getByLabelText('Periodo'), 'todo');
+    expect(document.getElementById('dash_refdate')).not.toBeInTheDocument();
+  });
 });

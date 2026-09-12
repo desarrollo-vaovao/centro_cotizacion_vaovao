@@ -6,28 +6,42 @@ import { HorizontalBarChart } from '../components/charts/HorizontalBarChart.jsx'
 import { DoughnutChart } from '../components/charts/DoughnutChart.jsx';
 import { Card } from '../components/ui/card.jsx';
 import { Select } from '../components/ui/select.jsx';
+import { Input } from '../components/ui/input.jsx';
 import { fmtMoney } from '../lib/utils.js';
 
 const PERIODS = [
-  ['mes', 'Mensual'], ['trimestre', 'Trimestral'], ['semestre', 'Semestral'], ['año', 'Anual'], ['todo', 'Todo']
+  ['semana', 'Semanal'], ['mes', 'Mensual'], ['trimestre', 'Trimestral'], ['semestre', 'Semestral'], ['año', 'Anual'], ['todo', 'Todo']
 ];
 
 const TREND_GRANULARITIES = [
   ['semana', 'Semanal'], ['mes', 'Mensual'], ['trimestre', 'Trimestral']
 ];
 
+function todayIso() { return new Date().toISOString().slice(0, 10); }
+
 export function DashboardPage() {
   const [period, setPeriod] = useState('mes');
+  const [refDate, setRefDate] = useState(todayIso);
   const [trendGranularity, setTrendGranularity] = useState('mes');
-  const { data } = useDashboard(period, trendGranularity);
+  const { data } = useDashboard(period, trendGranularity, refDate);
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-end justify-between">
         <h1 className="text-lg font-medium">Dashboard</h1>
-        <Select aria-label="Periodo" className="w-auto" value={period} onChange={(e) => setPeriod(e.target.value)}>
-          {PERIODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        </Select>
+        <div className="flex items-end gap-2">
+          {period !== 'todo' && (
+            <div>
+              <label htmlFor="dash_refdate" className="mb-1 block text-xs text-text-secondary">
+                {period === 'semana' ? 'Semana de' : period === 'mes' ? 'Mes de' : 'Fecha de referencia'}
+              </label>
+              <Input id="dash_refdate" type="date" className="w-auto" value={refDate} onChange={(e) => setRefDate(e.target.value)} />
+            </div>
+          )}
+          <Select aria-label="Periodo" className="w-auto" value={period} onChange={(e) => setPeriod(e.target.value)}>
+            {PERIODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </Select>
+        </div>
       </div>
       {data && (
         <>

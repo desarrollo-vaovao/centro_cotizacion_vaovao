@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import { useClientDashboard } from './dashboard.js';
+import { useDashboard, useClientDashboard } from './dashboard.js';
 import { api } from '../lib/apiClient.js';
 
 vi.mock('../lib/apiClient.js', () => ({ api: { get: vi.fn() } }));
@@ -11,6 +11,24 @@ function wrapper({ children }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return React.createElement(QueryClientProvider, { client }, children);
 }
+
+describe('useDashboard', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('omits refDate when none is given', async () => {
+    api.get.mockResolvedValue({ tendencia: [] });
+    const { result } = renderHook(() => useDashboard('mes', 'mes'), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.get).toHaveBeenCalledWith('/dashboard?period=mes&trendGranularity=mes');
+  });
+
+  it('includes refDate when given', async () => {
+    api.get.mockResolvedValue({ tendencia: [] });
+    const { result } = renderHook(() => useDashboard('semana', 'mes', '2026-03-10'), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.get).toHaveBeenCalledWith('/dashboard?period=semana&trendGranularity=mes&refDate=2026-03-10');
+  });
+});
 
 describe('useClientDashboard', () => {
   beforeEach(() => { vi.clearAllMocks(); });

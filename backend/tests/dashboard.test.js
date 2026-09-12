@@ -82,4 +82,37 @@ describe('dashboard', () => {
     const res = await agent.get('/dashboard').query({ period: 'todo', trendGranularity: 'nope' });
     expect(res.body.tendencia).toHaveLength(6);
   });
+
+  it('lets refDate pick which month to view, excluding it from the default (today-anchored) month', async () => {
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+    const lastMonthIso = lastMonth.toISOString().slice(0, 10);
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: lastMonthIso, estatus: 'Aprobada', monto: 900, impuestos: 0, lineaServicio: 'Video' });
+
+    const defaultRes = await agent.get('/dashboard').query({ period: 'mes' });
+    expect(defaultRes.body.kpis.montoAprobado).toBe(0);
+
+    const pickedRes = await agent.get('/dashboard').query({ period: 'mes', refDate: lastMonthIso });
+    expect(pickedRes.body.kpis.montoAprobado).toBe(900);
+  });
+
+  it('supports period=semana, anchored to refDate', async () => {
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    const refDate = twoWeeksAgo.toISOString().slice(0, 10);
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: refDate, estatus: 'Aprobada', monto: 300, impuestos: 0, lineaServicio: 'Video' });
+
+    const thisWeekRes = await agent.get('/dashboard').query({ period: 'semana' });
+    expect(thisWeekRes.body.kpis.montoAprobado).toBe(0);
+
+    const pickedWeekRes = await agent.get('/dashboard').query({ period: 'semana', refDate });
+    expect(pickedWeekRes.body.kpis.montoAprobado).toBe(300);
+  });
+
+  it('ignores a malformed refDate and falls back to today', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: today, estatus: 'Aprobada', monto: 400, impuestos: 0, lineaServicio: 'Video' });
+    const res = await agent.get('/dashboard').query({ period: 'mes', refDate: 'not-a-date' });
+    expect(res.body.kpis.montoAprobado).toBe(400);
+  });
 });

@@ -2,24 +2,8 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 
 const router = Router();
-const PERIODS = ['mes', 'trimestre', 'semestre', 'año', 'todo'];
+const PERIODS = ['semana', 'mes', 'trimestre', 'semestre', 'año', 'todo'];
 const TREND_GRANULARITIES = ['semana', 'mes', 'trimestre'];
-
-function periodRange(period) {
-  const now = new Date();
-  const y = now.getFullYear();
-  if (period === 'todo') return [null, null];
-  if (period === 'mes') return [new Date(y, now.getMonth(), 1), new Date(y, now.getMonth() + 1, 1)];
-  if (period === 'trimestre') {
-    const q = Math.floor(now.getMonth() / 3);
-    return [new Date(y, q * 3, 1), new Date(y, q * 3 + 3, 1)];
-  }
-  if (period === 'semestre') {
-    const h = Math.floor(now.getMonth() / 6);
-    return [new Date(y, h * 6, 1), new Date(y, h * 6 + 6, 1)];
-  }
-  return [new Date(y, 0, 1), new Date(y + 1, 0, 1)];
-}
 
 function toISO(d) {
   if (!d) return null;
@@ -34,6 +18,38 @@ function startOfWeek(date) {
   const mondayOffset = (d.getDay() + 6) % 7; // Monday = 0 ... Sunday = 6
   d.setDate(d.getDate() - mondayOffset);
   return d;
+}
+
+// req.query.refDate lets the client pick *which* week/month/quarter/etc to
+// look at, instead of the period always being anchored to today.
+function parseRefDate(raw) {
+  if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [y, m, d] = raw.split('-').map(Number);
+    const parsed = new Date(y, m - 1, d);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
+function periodRange(period, refDate = new Date()) {
+  const y = refDate.getFullYear();
+  if (period === 'todo') return [null, null];
+  if (period === 'semana') {
+    const start = startOfWeek(refDate);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    return [start, end];
+  }
+  if (period === 'mes') return [new Date(y, refDate.getMonth(), 1), new Date(y, refDate.getMonth() + 1, 1)];
+  if (period === 'trimestre') {
+    const q = Math.floor(refDate.getMonth() / 3);
+    return [new Date(y, q * 3, 1), new Date(y, q * 3 + 3, 1)];
+  }
+  if (period === 'semestre') {
+    const h = Math.floor(refDate.getMonth() / 6);
+    return [new Date(y, h * 6, 1), new Date(y, h * 6 + 6, 1)];
+  }
+  return [new Date(y, 0, 1), new Date(y + 1, 0, 1)];
 }
 
 // Builds a fixed number of consecutive [start, end) buckets ending at the
@@ -72,8 +88,8 @@ function buildTrendBuckets(granularity) {
   return buckets;
 }
 
-async function fetchPeriodQuotations(period, extraWhere = '', extraParams = []) {
-  const [start, end] = periodRange(period);
+async function fetchPeriodQuotations(period, refDate, extraWhere = '', extraParams = []) {
+  const [start, end] = periodRange(period, refDate);
   const params = [toISO(start), toISO(end), ...extraParams];
   const { rows } = await pool.query(
     `SELECT * FROM quotations
@@ -142,7 +158,8 @@ function byExecRows(rows, execNames) {
 router.get('/', async (req, res, next) => {
   try {
     const period = PERIODS.includes(req.query.period) ? req.query.period : 'mes';
-    const rows = await fetchPeriodQuotations(period);
+    const refDate = parseRefDate(req.query.refDate);
+    const rows = await fetchPeriodQuotations(period, refDate);
 
     const [clientsRes, execRes] = await Promise.all([
       pool.query('SELECT id, name FROM clients'),
@@ -177,7 +194,8 @@ router.get('/', async (req, res, next) => {
 router.get('/cliente/:clientId', async (req, res, next) => {
   try {
     const period = PERIODS.includes(req.query.period) ? req.query.period : 'mes';
-    const rows = await fetchPeriodQuotations(period, 'AND client_id = $3', [req.params.clientId]);
+    const refDate = parseRefDate(req.query.refDate);
+    const rows = await fetchPeriodQuotations(period, refDate, 'AND client_id = $3', [req.params.clientId]);
     res.json({ period, count: rows.length, kpis: buildKpis(rows), lineas: topBy(rows, (q) => q.linea_servicio, 100) });
   } catch (err) { next(err); }
 });
