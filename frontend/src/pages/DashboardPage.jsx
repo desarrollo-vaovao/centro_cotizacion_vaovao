@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useDashboard } from '../api/dashboard.js';
-import { KpiCard } from '../components/kpi/KpiCard.jsx';
+import { KpiCard, DollarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, FlagIcon, TargetIcon } from '../components/kpi/KpiCard.jsx';
 import { TrendChart } from '../components/charts/TrendChart.jsx';
 import { HorizontalBarChart } from '../components/charts/HorizontalBarChart.jsx';
 import { DoughnutChart } from '../components/charts/DoughnutChart.jsx';
@@ -43,12 +43,12 @@ export function DashboardPage() {
       {data && (
         <>
           <div className="mb-4 grid grid-cols-3 gap-3 md:grid-cols-6">
-            <KpiCard label="Cotizado" value={fmtMoney(data.kpis.montoPeriodo)} />
-            <KpiCard label="Aprobado (a facturar)" value={fmtMoney(data.kpis.montoAprobado)} />
-            <KpiCard label="Perdido (denegado)" value={fmtMoney(data.kpis.montoPerdido)} />
-            <KpiCard label="Cierre de cotización" value={data.kpis.avgAprob !== null ? `${data.kpis.avgAprob} días` : '—'} />
-            <KpiCard label="Cierre de proyecto" value={data.kpis.avgCierre !== null ? `${data.kpis.avgCierre} días` : '—'} />
-            <KpiCard label="Tasa de aprobación" value={data.kpis.tasa !== null ? `${data.kpis.tasa}%` : '—'} />
+            <KpiCard label="Cotizado" value={fmtMoney(data.kpis.montoPeriodo)} icon={<DollarIcon />} color="indigo" />
+            <KpiCard label="Aprobado (a facturar)" value={fmtMoney(data.kpis.montoAprobado)} icon={<CheckCircleIcon />} color="green" />
+            <KpiCard label="Perdido (denegado)" value={fmtMoney(data.kpis.montoPerdido)} icon={<XCircleIcon />} color="red" />
+            <KpiCard label="Cierre de cotización" value={data.kpis.avgAprob !== null ? `${data.kpis.avgAprob} días` : '—'} icon={<ClockIcon />} color="amber" />
+            <KpiCard label="Cierre de proyecto" value={data.kpis.avgCierre !== null ? `${data.kpis.avgCierre} días` : '—'} icon={<FlagIcon />} color="purple" />
+            <KpiCard label="Tasa de aprobación" value={data.kpis.tasa !== null ? `${data.kpis.tasa}%` : '—'} icon={<TargetIcon />} color="orange" />
           </div>
           <Card className="mb-4">
             <h2 className="mb-3 text-sm font-semibold">Tendencia</h2>
