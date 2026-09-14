@@ -43,12 +43,12 @@ export function DashboardPage() {
       {data && (
         <>
           <div className="mb-4 grid grid-cols-3 gap-3 md:grid-cols-6">
-            <KpiCard label="Cotizado" value={fmtMoney(data.kpis.montoPeriodo)} icon={<DollarIcon />} color="indigo" />
-            <KpiCard label="Aprobado (a facturar)" value={fmtMoney(data.kpis.montoAprobado)} icon={<CheckCircleIcon />} color="green" />
-            <KpiCard label="Perdido (denegado)" value={fmtMoney(data.kpis.montoPerdido)} icon={<XCircleIcon />} color="red" />
-            <KpiCard label="Cierre de cotización" value={data.kpis.avgAprob !== null ? `${data.kpis.avgAprob} días` : '—'} icon={<ClockIcon />} color="amber" />
-            <KpiCard label="Cierre de proyecto" value={data.kpis.avgCierre !== null ? `${data.kpis.avgCierre} días` : '—'} icon={<FlagIcon />} color="purple" />
-            <KpiCard label="Tasa de aprobación" value={data.kpis.tasa !== null ? `${data.kpis.tasa}%` : '—'} icon={<TargetIcon />} color="orange" />
+            <KpiCard label="Cotizado" value={fmtMoney(data.kpis.montoPeriodo)} icon={<DollarIcon />} color="indigo" delta={data.kpiDeltas?.montoPeriodo} />
+            <KpiCard label="Aprobado (a facturar)" value={fmtMoney(data.kpis.montoAprobado)} icon={<CheckCircleIcon />} color="green" delta={data.kpiDeltas?.montoAprobado} />
+            <KpiCard label="Perdido (denegado)" value={fmtMoney(data.kpis.montoPerdido)} icon={<XCircleIcon />} color="red" delta={data.kpiDeltas?.montoPerdido} invert />
+            <KpiCard label="Cierre de cotización" value={data.kpis.avgAprob !== null ? `${data.kpis.avgAprob} días` : '—'} icon={<ClockIcon />} color="amber" delta={data.kpiDeltas?.avgAprob} invert />
+            <KpiCard label="Cierre de proyecto" value={data.kpis.avgCierre !== null ? `${data.kpis.avgCierre} días` : '—'} icon={<FlagIcon />} color="purple" delta={data.kpiDeltas?.avgCierre} invert />
+            <KpiCard label="Tasa de aprobación" value={data.kpis.tasa !== null ? `${data.kpis.tasa}%` : '—'} icon={<TargetIcon />} color="orange" delta={data.kpiDeltas?.tasa} deltaUnit=" pts" />
           </div>
           <Card className="mb-4">
             <h2 className="mb-3 text-sm font-semibold">Tendencia</h2>

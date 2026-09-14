@@ -116,6 +116,47 @@ function avgDays(rows, f1, f2) {
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
 }
 
+// 'todo' has no meaningful "previous" window; everything else shifts refDate
+// back by one period and lets periodRange recompute the boundaries from
+// there, so month-length differences (28 vs 31 days) are handled for free.
+function previousRefDate(period, refDate) {
+  const y = refDate.getFullYear();
+  const m = refDate.getMonth();
+  if (period === 'semana') {
+    const d = new Date(refDate);
+    d.setDate(d.getDate() - 7);
+    return d;
+  }
+  if (period === 'mes') return new Date(y, m - 1, 1);
+  if (period === 'trimestre') return new Date(y, m - 3, 1);
+  if (period === 'semestre') return new Date(y, m - 6, 1);
+  if (period === 'año') return new Date(y - 1, m, 1);
+  return null;
+}
+
+// Percent change relative to the previous value. A zero (or missing)
+// baseline has no meaningful percent change, so it reports null rather than
+// an infinite or misleading number — the UI just omits the indicator then.
+function pctDelta(curr, prev) {
+  if (prev === null || prev === undefined) return null;
+  if (prev === 0) return curr === 0 ? 0 : null;
+  return Math.round(((curr - prev) / Math.abs(prev)) * 1000) / 10;
+}
+
+function buildKpiDeltas(curr, prev) {
+  if (!prev) return null;
+  return {
+    montoPeriodo: pctDelta(curr.montoPeriodo, prev.montoPeriodo),
+    montoAprobado: pctDelta(curr.montoAprobado, prev.montoAprobado),
+    montoPerdido: pctDelta(curr.montoPerdido, prev.montoPerdido),
+    // tasa is already a percentage, so its delta is a point difference, not
+    // a percent-change-of-a-percent (which would just confuse the reading).
+    tasa: (curr.tasa === null || prev.tasa === null) ? null : curr.tasa - prev.tasa,
+    avgAprob: (curr.avgAprob === null || prev.avgAprob === null) ? null : pctDelta(curr.avgAprob, prev.avgAprob),
+    avgCierre: (curr.avgCierre === null || prev.avgCierre === null) ? null : pctDelta(curr.avgCierre, prev.avgCierre)
+  };
+}
+
 function buildKpis(rows) {
   const montoPeriodo = rows.reduce((a, q) => a + money(q), 0);
   const montoAprobado = rows.filter((q) => q.estatus === 'Aprobada').reduce((a, q) => a + money(q), 0);
@@ -163,6 +204,10 @@ router.get('/', async (req, res, next) => {
     const period = PERIODS.includes(req.query.period) ? req.query.period : 'mes';
     const refDate = parseRefDate(req.query.refDate);
     const rows = await fetchPeriodQuotations(period, refDate);
+    const kpis = buildKpis(rows);
+
+    const prevRef = previousRefDate(period, refDate);
+    const kpisPrev = prevRef ? buildKpis(await fetchPeriodQuotations(period, prevRef)) : null;
 
     const [clientsRes, execRes] = await Promise.all([
       pool.query('SELECT id, name FROM clients'),
@@ -185,7 +230,8 @@ router.get('/', async (req, res, next) => {
 
     res.json({
       period,
-      kpis: buildKpis(rows),
+      kpis,
+      kpiDeltas: buildKpiDeltas(kpis, kpisPrev),
       lineas: topBy(rows, (q) => q.linea_servicio, 8),
       clientes: byClientRows(rows, clientNames, 8),
       ejecutivos: byExecRows(rows, execNames),

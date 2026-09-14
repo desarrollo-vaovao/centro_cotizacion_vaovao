@@ -46,6 +46,26 @@ describe('DashboardPage', () => {
     expect(await screen.findByText('Marco Ramírez')).toBeInTheDocument();
   });
 
+  it('renders the kpiDeltas returned by the endpoint as delta badges', async () => {
+    api.get.mockImplementation((path) => {
+      if (path.startsWith('/dashboard')) return Promise.resolve({
+        period: 'mes',
+        kpis: { montoPeriodo: 3100, montoAprobado: 3100, montoPerdido: 0, avgAprob: 2, avgCierre: null, tasa: 100 },
+        kpiDeltas: { montoPeriodo: 50, montoAprobado: 50, montoPerdido: null, tasa: 20, avgAprob: -10, avgCierre: null },
+        lineas: [['Video', 3100]],
+        clientes: [['C807 Operador', { count: 1, monto: 3100 }]],
+        ejecutivos: [['Marco Ramírez', { count: 1, monto: 3100 }]],
+        tendencia: [{ period: '2026-07', aprobado: 3100, enProceso: 0, denegado: 0 }]
+      });
+      return Promise.resolve([]);
+    });
+    renderPage();
+    await screen.findAllByText('chart:bar');
+    expect((await screen.findAllByText('+50%')).length).toBeGreaterThan(0);
+    expect(screen.getByText('+20 pts')).toBeInTheDocument();
+    expect(screen.getByText('-10%')).toBeInTheDocument();
+  });
+
   it('does not show a separate trend granularity control — it follows the period picked above', async () => {
     renderPage();
     await screen.findAllByText('chart:bar');

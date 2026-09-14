@@ -127,4 +127,41 @@ describe('dashboard', () => {
     const res = await agent.get('/dashboard').query({ period: 'mes', refDate: 'not-a-date' });
     expect(res.body.kpis.montoAprobado).toBe(400);
   });
+
+  it('computes a percent-change kpiDelta against the previous period', async () => {
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 15).toISOString().slice(0, 10);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 15).toISOString().slice(0, 10);
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: thisMonth, estatus: 'Enviada', monto: 1500, impuestos: 0, lineaServicio: 'Video' });
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: lastMonth, estatus: 'Enviada', monto: 1000, impuestos: 0, lineaServicio: 'Video' });
+
+    const res = await agent.get('/dashboard').query({ period: 'mes' });
+    expect(res.body.kpiDeltas.montoPeriodo).toBe(50);
+  });
+
+  it('reports tasa delta as a point difference, not a percent-of-a-percent', async () => {
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 15).toISOString().slice(0, 10);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 15).toISOString().slice(0, 10);
+    // This month: 1/1 approved = 100%. Last month: 1/2 approved = 50%.
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: thisMonth, estatus: 'Aprobada', monto: 100, impuestos: 0, lineaServicio: 'Video' });
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: lastMonth, estatus: 'Aprobada', monto: 100, impuestos: 0, lineaServicio: 'Video' });
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: lastMonth, estatus: 'Denegada', monto: 100, impuestos: 0, lineaServicio: 'Video' });
+
+    const res = await agent.get('/dashboard').query({ period: 'mes' });
+    expect(res.body.kpis.tasa).toBe(100);
+    expect(res.body.kpiDeltas.tasa).toBe(50);
+  });
+
+  it('omits the delta (null) when the previous period has no data to compare against', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    await insertQuotation({ clientId: client.id, executiveId: exec.id, fecha: today, estatus: 'Enviada', monto: 500, impuestos: 0, lineaServicio: 'Video' });
+    const res = await agent.get('/dashboard').query({ period: 'mes' });
+    expect(res.body.kpiDeltas.montoPeriodo).toBeNull();
+  });
+
+  it('has no kpiDeltas for period=todo, which has no "previous" window', async () => {
+    const res = await agent.get('/dashboard').query({ period: 'todo' });
+    expect(res.body.kpiDeltas).toBeNull();
+  });
 });

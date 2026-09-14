@@ -71,7 +71,34 @@ const COLOR_CLASSES = {
   orange: 'bg-accent/10 text-accent'
 };
 
-export function KpiCard({ label, value, icon, color = 'indigo' }) {
+function DeltaArrow({ direction }) {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      {direction === 'up' ? <path d="M12 4l8 10H4z" /> : <path d="M12 20L4 10h16z" />}
+    </svg>
+  );
+}
+
+// `invert` flips which direction reads as "good" — for a días metric, a
+// lower number (negative delta) is the improvement, not a higher one.
+function DeltaBadge({ delta, unit = '%', invert = false }) {
+  if (delta === null || delta === undefined) return null;
+  const isUp = delta > 0;
+  const isDown = delta < 0;
+  const good = invert ? isDown : isUp;
+  const bad = invert ? isUp : isDown;
+  const colorClass = good ? 'text-success' : bad ? 'text-danger' : 'text-text-secondary';
+  const sign = delta > 0 ? '+' : '';
+  return (
+    <span className={cn('inline-flex items-center gap-0.5 text-xs font-medium', colorClass)} title="vs. periodo anterior">
+      {isUp && <DeltaArrow direction="up" />}
+      {isDown && <DeltaArrow direction="down" />}
+      {sign}{delta}{unit}
+    </span>
+  );
+}
+
+export function KpiCard({ label, value, icon, color = 'indigo', delta, deltaUnit, invert }) {
   return (
     <Card className="flex items-center gap-3">
       {icon && (
@@ -81,7 +108,10 @@ export function KpiCard({ label, value, icon, color = 'indigo' }) {
       )}
       <div className="flex flex-col gap-1">
         <span className="text-xs text-text-secondary">{label}</span>
-        <span className="text-lg font-semibold">{value}</span>
+        <div className="flex items-baseline gap-2">
+          <span className="text-lg font-semibold">{value}</span>
+          <DeltaBadge delta={delta} unit={deltaUnit} invert={invert} />
+        </div>
       </div>
     </Card>
   );
