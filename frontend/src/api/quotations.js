@@ -39,10 +39,11 @@ function toQueryString(filters = {}) {
   return qs ? `?${qs}` : '';
 }
 
-export function useQuotations(filters = {}) {
+export function useQuotations(filters = {}, options = {}) {
   return useQuery({
     queryKey: ['quotations', filters],
-    queryFn: async () => (await api.get(`/quotations${toQueryString(filters)}`)).map(mapQuotation)
+    queryFn: async () => (await api.get(`/quotations${toQueryString(filters)}`)).map(mapQuotation),
+    ...options
   });
 }
 

@@ -38,6 +38,12 @@ describe('useQuotations', () => {
     expect(api.get).toHaveBeenCalledWith('/quotations?estatus=Aprobada');
     expect(result.current.data[0].monto).toBe(100);
   });
+
+  it('does not fetch when disabled via options', () => {
+    const { result } = renderHook(() => useQuotations({ clientId: undefined }, { enabled: false }), { wrapper });
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(api.get).not.toHaveBeenCalled();
+  });
 });
 
 describe('useCreateQuotation', () => {
