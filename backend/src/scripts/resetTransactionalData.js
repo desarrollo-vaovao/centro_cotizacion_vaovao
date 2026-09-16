@@ -24,9 +24,10 @@ async function main() {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('TRUNCATE TABLE quotations RESTART IDENTITY');
-    await client.query('TRUNCATE TABLE clients RESTART IDENTITY');
-    await client.query('TRUNCATE TABLE executives RESTART IDENTITY');
+    // Postgres refuses to TRUNCATE a table another table has an FK into
+    // unless both are truncated in the same statement, regardless of
+    // truncation order across separate statements.
+    await client.query('TRUNCATE TABLE quotations, clients, executives RESTART IDENTITY');
     await client.query('UPDATE settings SET general_seq = 0 WHERE id = 1');
     await client.query('COMMIT');
   } catch (err) {
