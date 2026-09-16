@@ -8,7 +8,7 @@ export function makeAgent() {
 }
 
 export async function resetDb() {
-  await pool.query('TRUNCATE quotations, clients, executives, service_lines RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE quotations, clients, service_lines RESTART IDENTITY CASCADE');
   await pool.query('UPDATE settings SET general_seq = 0, logo_agencia = NULL, logo_velarc = NULL WHERE id = 1');
 }
 
