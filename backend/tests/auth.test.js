@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { makeAgent, resetDb, seedTestUser, loginAgent } from './helpers/index.js';
+import { makeAgent, resetDb, seedTestUser, seedTestExecutive, loginAgent } from './helpers/index.js';
 import { pool } from '../src/db.js';
 
 describe('auth', () => {
@@ -58,6 +58,21 @@ describe('auth', () => {
 
     const meRes = await agent.get('/auth/me');
     expect(meRes.body.user.mustChangePassword).toBe(true);
+  });
+
+  it('reports role=owner on login and /auth/me for the seeded test account', async () => {
+    const agent = makeAgent();
+    const loginRes = await agent.post('/auth/login').send({ email: 'test@vaovao.co', password: 'Test1234!' });
+    expect(loginRes.body.user.role).toBe('owner');
+    const meRes = await agent.get('/auth/me');
+    expect(meRes.body.user.role).toBe('owner');
+  });
+
+  it('reports role=executive for a non-owner account', async () => {
+    await seedTestExecutive();
+    const agent = makeAgent();
+    const res = await agent.post('/auth/login').send({ email: 'exec@vaovao.co', password: 'Test1234!' });
+    expect(res.body.user.role).toBe('executive');
   });
 });
 

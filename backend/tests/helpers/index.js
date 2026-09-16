@@ -15,8 +15,17 @@ export async function resetDb() {
 export async function seedTestUser() {
   const passwordHash = await hashPassword('Test1234!');
   await pool.query(
-    `INSERT INTO users (email, password_hash, name) VALUES ('test@vaovao.co', $1, 'Test User')
-     ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, must_change_password = false`,
+    `INSERT INTO users (email, password_hash, name, role) VALUES ('test@vaovao.co', $1, 'Test User', 'owner')
+     ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, must_change_password = false, role = 'owner'`,
+    [passwordHash]
+  );
+}
+
+export async function seedTestExecutive() {
+  const passwordHash = await hashPassword('Test1234!');
+  await pool.query(
+    `INSERT INTO users (email, password_hash, name, role) VALUES ('exec@vaovao.co', $1, 'Test Executive', 'executive')
+     ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, must_change_password = false, role = 'executive'`,
     [passwordHash]
   );
 }
