@@ -20,3 +20,9 @@ export function useDeleteExecutive() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['executives'] })
   });
 }
+
+export function useResetExecutivePassword() {
+  return useMutation({
+    mutationFn: (id) => api.post(`/executives/${id}/reset-password`)
+  });
+}

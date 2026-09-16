@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useClients, useCreateClient, useDeleteClient } from '../api/clients.js';
-import { useExecutives, useCreateExecutive, useDeleteExecutive } from '../api/executives.js';
+import { useExecutives, useCreateExecutive, useDeleteExecutive, useResetExecutivePassword } from '../api/executives.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { useServiceLines, useCreateServiceLine, useUpdateServiceLine, useDeleteServiceLine } from '../api/serviceLines.js';
 import { useLogos, useSaveLogos, useDeleteLogo } from '../api/settings.js';
 import { Card } from '../components/ui/card.jsx';
@@ -96,51 +97,105 @@ function ClientsPanel() {
   );
 }
 
-function ExecutivesPanel() {
-  const { data: executives = [] } = useExecutives();
-  const createExecutive = useCreateExecutive();
-  const deleteExecutive = useDeleteExecutive();
+function UsersPanel() {
+  const { user } = useAuth();
+  const isOwner = user?.role === 'owner';
+  const { data: users = [] } = useExecutives();
+  const createUser = useCreateExecutive();
+  const resetPassword = useResetExecutivePassword();
+  const deleteUser = useDeleteExecutive();
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  const [revealed, setRevealed] = useState(null);
 
   async function onAdd() {
     setError('');
-    if (!name.trim()) return;
     try {
-      await createExecutive.mutateAsync({ name });
-      setName('');
+      const created = await createUser.mutateAsync({ name, email });
+      setName(''); setEmail('');
+      setRevealed({ email: created.email, tempPassword: created.tempPassword });
     } catch (err) { setError(err.message); }
   }
 
-  async function onDelete(executive) {
+  async function onResetPassword(u) {
     setError('');
-    if (!window.confirm(`¿Eliminar el ejecutivo "${executive.name}"? Esta acción no se puede deshacer.`)) return;
+    if (!window.confirm(`¿Restablecer la contraseña de "${u.name}"?`)) return;
     try {
-      await deleteExecutive.mutateAsync(executive.id);
+      const result = await resetPassword.mutateAsync(u.id);
+      setRevealed({ email: u.email, tempPassword: result.tempPassword });
     } catch (err) { setError(err.message); }
+  }
+
+  async function onDelete(u) {
+    setError('');
+    if (!window.confirm(`¿Eliminar el usuario "${u.name}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteUser.mutateAsync(u.id);
+    } catch (err) { setError(err.message); }
+  }
+
+  async function onCopyPassword() {
+    if (!revealed) return;
+    try { await navigator.clipboard.writeText(revealed.tempPassword); } catch { /* clipboard unavailable — the text is still visible to select manually */ }
   }
 
   return (
     <Card>
-      <h2 className="mb-3 text-sm font-semibold">Ejecutivos</h2>
+      <h2 className="mb-3 text-sm font-semibold">Usuarios</h2>
+      {revealed && (
+        <div className="mb-3 rounded-md border border-ui-accent bg-ui-accent/5 p-2.5 text-xs">
+          <p className="mb-1">Contraseña temporal para <strong>{revealed.email}</strong>: <code className="font-mono">{revealed.tempPassword}</code></p>
+          <p className="mb-2 text-text-secondary">Cópiala ahora — no se volverá a mostrar.</p>
+          <div className="flex gap-2">
+            <Button type="button" size="small" onClick={onCopyPassword}>Copiar</Button>
+            <Button type="button" size="small" onClick={() => setRevealed(null)}>Cerrar</Button>
+          </div>
+        </div>
+      )}
       <ul className="text-sm">
-        {executives.map((e) => (
-          <li key={e.id} className="flex items-center justify-between border-t border-border py-1.5 first:border-t-0">
-            <span>{e.name}</span>
-            <Button aria-label={`Eliminar ejecutivo ${e.name}`} variant="danger" size="small" className="px-2" onClick={() => onDelete(e)}>
-              <TrashIcon />
-            </Button>
+        {users.map((u) => (
+          <li key={u.id} className="flex items-center justify-between border-t border-border py-1.5 first:border-t-0">
+            <div className="flex flex-col">
+              <span className="flex items-center gap-1">
+                <span>{u.name}</span>
+                {u.role === 'owner' && <span className="text-[10px] uppercase text-ui-accent">Owner</span>}
+              </span>
+              <span className="text-xs text-text-secondary">{u.email}</span>
+            </div>
+            {isOwner && (
+              <span className="flex shrink-0 gap-1">
+                <Button type="button" size="small" aria-label={`Restablecer contraseña de ${u.name}`} onClick={() => onResetPassword(u)}>
+                  Restablecer contraseña
+                </Button>
+                {String(u.id) !== String(user.id) && (
+                  <Button aria-label={`Eliminar usuario ${u.name}`} variant="danger" size="small" className="px-2" onClick={() => onDelete(u)}>
+                    <TrashIcon />
+                  </Button>
+                )}
+              </span>
+            )}
           </li>
         ))}
       </ul>
-      <div className="mt-3">
-        <label htmlFor="ne_name" className="mb-1 block text-xs text-text-secondary">Nombre del ejecutivo</label>
-        <Input id="ne_name" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
-      <Button className="mt-2" disabled={createExecutive.isPending} onClick={onAdd}>
-        {createExecutive.isPending ? 'Guardando…' : 'Guardar ejecutivo'}
-      </Button>
+      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+      {isOwner && (
+        <div className="mt-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="nu_name" className="mb-1 block text-xs text-text-secondary">Nombre del usuario</label>
+              <Input id="nu_name" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="nu_email" className="mb-1 block text-xs text-text-secondary">Correo del usuario</label>
+              <Input id="nu_email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+          </div>
+          <Button className="mt-2" disabled={createUser.isPending} onClick={onAdd}>
+            {createUser.isPending ? 'Guardando…' : 'Crear usuario'}
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }
@@ -222,7 +277,7 @@ export function CatalogoPage() {
       <h1 className="text-lg font-medium">Configuración</h1>
       <div className="grid grid-cols-2 gap-4">
         <ClientsPanel />
-        <ExecutivesPanel />
+        <UsersPanel />
       </div>
       <ServiceLinesPanel />
       <LogosPanel />
