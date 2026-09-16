@@ -69,7 +69,7 @@ describe('clients', () => {
 
   it('refuses to delete a client that has quotations', async () => {
     const client = await agent.post('/clients').set('X-CSRF-Token', csrfToken).send({ name: 'Tengo Tienda', country: 'Guatemala' });
-    const exec = await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Marco Ramírez' });
+    const exec = await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Marco Ramírez', email: 'marco@vaovao.co' });
     await agent.post('/quotations').set('X-CSRF-Token', csrfToken).send({
       clientId: client.body.id, pais: 'Guatemala', lineaServicio: 'Video', executiveId: exec.body.id,
       proyecto: 'Contenidos', detalle: ['Edición de 6 videos'], monto: 100

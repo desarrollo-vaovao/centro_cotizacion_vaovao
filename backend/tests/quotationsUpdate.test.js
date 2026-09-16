@@ -3,7 +3,7 @@ import { makeAgent, resetDb, seedTestUser, loginAgent } from './helpers/index.js
 
 async function createQuotation(agent, csrfToken) {
   const client = (await agent.post('/clients').set('X-CSRF-Token', csrfToken).send({ name: 'C807', country: 'Guatemala', code: 'C807' })).body;
-  const exec = (await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Marco' })).body;
+  const exec = (await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Marco', email: 'marco@vaovao.co' })).body;
   const res = await agent.post('/quotations').set('X-CSRF-Token', csrfToken).send({
     clientId: client.id, pais: 'Guatemala', lineaServicio: 'Video', executiveId: exec.id,
     proyecto: 'Contenidos', detalle: ['Edición'], monto: 3100, impuestos: 372

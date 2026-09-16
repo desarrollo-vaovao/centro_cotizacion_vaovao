@@ -211,7 +211,7 @@ router.get('/', async (req, res, next) => {
 
     const [clientsRes, execRes] = await Promise.all([
       pool.query('SELECT id, name FROM clients'),
-      pool.query('SELECT id, name FROM executives')
+      pool.query('SELECT id, name FROM users')
     ]);
     const clientNames = Object.fromEntries(clientsRes.rows.map((c) => [c.id, c.name]));
     const execNames = Object.fromEntries(execRes.rows.map((e) => [e.id, e.name]));

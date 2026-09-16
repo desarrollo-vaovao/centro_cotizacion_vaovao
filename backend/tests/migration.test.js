@@ -1,7 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { pool } from '../src/db.js';
+import { resetDb } from './helpers/index.js';
 
 describe('migrations', () => {
+  beforeEach(async () => {
+    await resetDb();
+  });
+
   it('creates all expected tables and drops executives', async () => {
     const { rows } = await pool.query(
       `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`

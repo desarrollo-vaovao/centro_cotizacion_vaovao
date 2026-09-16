@@ -22,7 +22,7 @@ describe('dashboard', () => {
     agent = makeAgent();
     csrfToken = await loginAgent(agent);
     client = (await agent.post('/clients').set('X-CSRF-Token', csrfToken).send({ name: 'C807', country: 'Guatemala', code: 'C807' })).body;
-    exec = (await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Marco' })).body;
+    exec = (await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Marco', email: 'marco@vaovao.co' })).body;
   });
 
   it('computes kpis for the current period', async () => {

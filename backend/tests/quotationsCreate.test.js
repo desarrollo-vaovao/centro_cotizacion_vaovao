@@ -8,7 +8,7 @@ async function createClient(agent, csrfToken, overrides = {}) {
 }
 
 async function createExecutive(agent, csrfToken) {
-  const res = await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Marco Ramírez' });
+  const res = await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Marco Ramírez', email: 'marco@vaovao.co' });
   return res.body;
 }
 
