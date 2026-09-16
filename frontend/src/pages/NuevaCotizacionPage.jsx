@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useClients, useCreateClient } from '../api/clients.js';
-import { useExecutives, useCreateExecutive } from '../api/executives.js';
+import { useExecutives } from '../api/executives.js';
 import { useServiceLines } from '../api/serviceLines.js';
 import { useCreateQuotation, useAdjustQuotation, useQuotation } from '../api/quotations.js';
 import { Card } from '../components/ui/card.jsx';
@@ -21,7 +21,6 @@ export function NuevaCotizacionPage() {
   const { data: executives = [] } = useExecutives();
   const { data: serviceLines = [] } = useServiceLines();
   const createClient = useCreateClient();
-  const createExecutive = useCreateExecutive();
   const createQuotation = useCreateQuotation();
   const adjustQuotation = useAdjustQuotation();
 
@@ -35,7 +34,6 @@ export function NuevaCotizacionPage() {
   const [pais, setPais] = useState(COUNTRIES[0]);
   const [lineaServicio, setLineaServicio] = useState('');
   const [executiveId, setExecutiveId] = useState('');
-  const [newExecName, setNewExecName] = useState('');
   const [proyecto, setProyecto] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [detalle, setDetalle] = useState(['']);
@@ -90,21 +88,6 @@ export function NuevaCotizacionPage() {
     setNewClientContact(''); setNewClientEmail(''); setNewClientPhone('');
   }
 
-  async function createNewExecutive() {
-    if (!newExecName.trim()) { setError('Ingresa el nombre del ejecutivo nuevo.'); return null; }
-    try {
-      return await createExecutive.mutateAsync({ name: newExecName });
-    } catch (err) { setError(err.message); return null; }
-  }
-
-  async function onSaveNewExecutive() {
-    setError('');
-    const created = await createNewExecutive();
-    if (!created) return;
-    setExecutiveId(String(created.id));
-    setNewExecName('');
-  }
-
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
@@ -118,13 +101,8 @@ export function NuevaCotizacionPage() {
       setError('Selecciona o crea un cliente.'); return;
     }
 
-    let finalExecutiveId = executiveId;
-    if (executiveId === '__new__') {
-      const created = await createNewExecutive();
-      if (!created) return;
-      finalExecutiveId = String(created.id);
-    } else if (!executiveId) {
-      setError('Selecciona o crea un ejecutivo.'); return;
+    if (!executiveId) {
+      setError('Selecciona un ejecutivo.'); return;
     }
 
     if (!proyecto.trim()) { setError('Ingresa el nombre del proyecto.'); return; }
@@ -135,7 +113,7 @@ export function NuevaCotizacionPage() {
 
     const impuestos = Math.round(((montoNum * (parseFloat(impPct) || 0)) / 100) * 100) / 100;
     const payload = {
-      clientId: finalClientId, pais, lineaServicio: effectiveLinea, executiveId: finalExecutiveId,
+      clientId: finalClientId, pais, lineaServicio: effectiveLinea, executiveId,
       proyecto: proyecto.trim(), descripcion, detalle: cleanDetalle,
       monto: montoNum, impuestos, moneda, validezDias: parseInt(validezDias, 10) || 30
     };
@@ -223,20 +201,9 @@ export function NuevaCotizacionPage() {
               <Select id="f_ejecutivo" value={executiveId} onChange={(e) => setExecutiveId(e.target.value)}>
                 <option value="">Selecciona…</option>
                 {executives.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                <option value="__new__">+ Nuevo ejecutivo</option>
               </Select>
             </div>
           </div>
-          {executiveId === '__new__' && (
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <Input aria-label="Nombre del ejecutivo nuevo" placeholder="Nombre completo" value={newExecName} onChange={(e) => setNewExecName(e.target.value)} />
-              </div>
-              <Button type="button" size="small" disabled={createExecutive.isPending} onClick={onSaveNewExecutive}>
-                {createExecutive.isPending ? 'Guardando…' : 'Guardar ejecutivo'}
-              </Button>
-            </div>
-          )}
 
           <div>
             <label htmlFor="f_proyecto" className="mb-1 block text-xs font-medium text-text-secondary">Proyecto</label>
