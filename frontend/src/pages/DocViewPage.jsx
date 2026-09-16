@@ -79,7 +79,11 @@ export function DocViewPage() {
           {generating ? 'Generando…' : 'Descargar PDF'}
         </Button>
       </div>
-      <div ref={docRef} className="relative mx-auto max-w-[560px] rounded-2xl border border-border bg-paper p-8 shadow-sm">
+      <div
+        ref={docRef}
+        className="relative mx-auto flex max-w-[560px] flex-col rounded-2xl border border-border bg-paper p-8 shadow-sm"
+        style={{ aspectRatio: '8.5 / 11' }}
+      >
         <div className="absolute inset-x-0 top-0 h-[5px] bg-accent" />
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
@@ -111,9 +115,9 @@ export function DocViewPage() {
           <div><div className="bg-ink px-2.5 py-1.5 text-[10.5px] font-medium text-white">Cliente</div><div className="p-2.5 text-xs font-semibold">{clientLabel}</div></div>
           <div className="border-l border-border"><div className="bg-ink px-2.5 py-1.5 text-[10.5px] font-medium text-white">Descripción de proyecto</div><div className="p-2.5 text-[11.5px] leading-relaxed">{quotation.descripcion || quotation.proyecto}</div></div>
         </div>
-        <div className="overflow-hidden rounded-lg border border-border">
+        <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border">
           <div className="flex bg-ink text-[10.5px] font-medium text-white"><div className="flex-1 px-2.5 py-1.5">Detalle</div><div className="w-[110px] border-l border-white/25 px-2.5 py-1.5">Costo</div></div>
-          <div className="flex">
+          <div className="flex flex-1">
             <div className="flex-1 border-r border-border p-2.5 text-[11.5px] leading-loose">
               {quotation.detalle.map((d, i) => <div key={i}>• {d}</div>)}
             </div>
