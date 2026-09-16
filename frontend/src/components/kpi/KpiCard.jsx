@@ -106,9 +106,9 @@ export function KpiCard({ label, value, icon, color = 'indigo', delta, deltaUnit
           {icon}
         </div>
       )}
-      <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1">
         <span className="text-xs text-text-secondary">{label}</span>
-        <div className="flex items-baseline gap-2">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-lg font-semibold">{value}</span>
           <DeltaBadge delta={delta} unit={deltaUnit} invert={invert} />
         </div>
