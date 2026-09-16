@@ -40,7 +40,15 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  return <AuthContext.Provider value={{ user, status, login, logout }}>{children}</AuthContext.Provider>;
+  const completePasswordChange = useCallback(() => {
+    setUser((prev) => (prev ? { ...prev, mustChangePassword: false } : prev));
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, status, login, logout, completePasswordChange }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

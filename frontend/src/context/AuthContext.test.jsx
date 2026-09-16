@@ -69,4 +69,29 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(screen.getByText(/status:anonymous/)).toBeInTheDocument());
     expect(screen.getByText(/user:none/)).toBeInTheDocument();
   });
+
+  it('completePasswordChange flips mustChangePassword to false without a re-fetch', async () => {
+    authApi.me.mockResolvedValue({
+      user: { id: 1, email: 'a@vaovao.co', mustChangePassword: true },
+      csrfToken: 'tok'
+    });
+
+    function ProbeWithFlag() {
+      const { status, user, completePasswordChange } = useAuth();
+      return (
+        <div>
+          <div>status:{status} mustChange:{user ? String(user.mustChangePassword) : 'none'}</div>
+          <button onClick={completePasswordChange}>Done</button>
+        </div>
+      );
+    }
+
+    render(<AuthProvider><ProbeWithFlag /></AuthProvider>);
+    await waitFor(() => expect(screen.getByText(/mustChange:true/)).toBeInTheDocument());
+
+    screen.getByRole('button', { name: 'Done' }).click();
+
+    await waitFor(() => expect(screen.getByText(/mustChange:false/)).toBeInTheDocument());
+    expect(authApi.me).toHaveBeenCalledTimes(1);
+  });
 });
