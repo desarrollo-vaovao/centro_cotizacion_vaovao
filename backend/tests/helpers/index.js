@@ -16,7 +16,7 @@ export async function seedTestUser() {
   const passwordHash = await hashPassword('Test1234!');
   await pool.query(
     `INSERT INTO users (email, password_hash, name) VALUES ('test@vaovao.co', $1, 'Test User')
-     ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
+     ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, must_change_password = false`,
     [passwordHash]
   );
 }

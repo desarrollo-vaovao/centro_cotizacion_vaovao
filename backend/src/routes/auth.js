@@ -14,23 +14,23 @@ router.post('/login', createLoginLimiter(), async (req, res, next) => {
       return res.status(400).json({ error: 'Correo y contraseña son requeridos.' });
     }
     const { rows } = await pool.query(
-      'SELECT id, email, password_hash, name FROM users WHERE email = $1',
+      'SELECT id, email, password_hash, name, must_change_password FROM users WHERE email = $1',
       [String(email).toLowerCase().trim()]
     );
     const user = rows[0];
     if (!user || !(await verifyPassword(password, user.password_hash))) {
       return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
     }
-    // Regenerate the session ID at the moment privilege is granted, so a
-    // pre-auth session ID (e.g. planted via a fixation attack) is never
-    // reused as an authenticated session.
     req.session.regenerate((regenErr) => {
       if (regenErr) return next(regenErr);
       req.session.userId = user.id;
       req.session.csrfToken = crypto.randomBytes(24).toString('hex');
       req.session.save((saveErr) => {
         if (saveErr) return next(saveErr);
-        res.json({ user: { id: user.id, email: user.email, name: user.name }, csrfToken: req.session.csrfToken });
+        res.json({
+          user: { id: user.id, email: user.email, name: user.name, mustChangePassword: user.must_change_password },
+          csrfToken: req.session.csrfToken
+        });
       });
     });
   } catch (err) { next(err); }
@@ -50,9 +50,16 @@ router.get('/me', async (req, res, next) => {
     if (!req.session || !req.session.userId) {
       return res.status(401).json({ error: 'No autenticado.' });
     }
-    const { rows } = await pool.query('SELECT id, email, name FROM users WHERE id = $1', [req.session.userId]);
-    if (!rows[0]) return res.status(401).json({ error: 'No autenticado.' });
-    res.json({ user: rows[0], csrfToken: req.session.csrfToken });
+    const { rows } = await pool.query(
+      'SELECT id, email, name, must_change_password FROM users WHERE id = $1',
+      [req.session.userId]
+    );
+    const user = rows[0];
+    if (!user) return res.status(401).json({ error: 'No autenticado.' });
+    res.json({
+      user: { id: user.id, email: user.email, name: user.name, mustChangePassword: user.must_change_password },
+      csrfToken: req.session.csrfToken
+    });
   } catch (err) { next(err); }
 });
 

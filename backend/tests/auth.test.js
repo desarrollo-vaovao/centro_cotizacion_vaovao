@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { makeAgent, resetDb, seedTestUser } from './helpers/index.js';
+import { pool } from '../src/db.js';
 
 describe('auth', () => {
   beforeEach(async () => {
@@ -41,5 +42,21 @@ describe('auth', () => {
     await agent.post('/auth/logout').set('X-CSRF-Token', loginRes.body.csrfToken);
     const res = await agent.get('/auth/me');
     expect(res.status).toBe(401);
+  });
+
+  it('reports mustChangePassword=false for a normal account on login', async () => {
+    const agent = makeAgent();
+    const res = await agent.post('/auth/login').send({ email: 'test@vaovao.co', password: 'Test1234!' });
+    expect(res.body.user.mustChangePassword).toBe(false);
+  });
+
+  it('reports mustChangePassword=true on login and /auth/me for a flagged account', async () => {
+    await pool.query(`UPDATE users SET must_change_password = true WHERE email = 'test@vaovao.co'`);
+    const agent = makeAgent();
+    const loginRes = await agent.post('/auth/login').send({ email: 'test@vaovao.co', password: 'Test1234!' });
+    expect(loginRes.body.user.mustChangePassword).toBe(true);
+
+    const meRes = await agent.get('/auth/me');
+    expect(meRes.body.user.mustChangePassword).toBe(true);
   });
 });
