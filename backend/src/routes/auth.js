@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
 import { pool } from '../db.js';
-import { verifyPassword } from '../utils/password.js';
+import { hashPassword, verifyPassword } from '../utils/password.js';
 import { createLoginLimiter } from '../middleware/rateLimit.js';
 import { verifyCsrf } from '../middleware/csrf.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -60,6 +61,29 @@ router.get('/me', async (req, res, next) => {
       user: { id: user.id, email: user.email, name: user.name, mustChangePassword: user.must_change_password },
       csrfToken: req.session.csrfToken
     });
+  } catch (err) { next(err); }
+});
+
+router.post('/change-password', requireAuth, verifyCsrf, async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Contraseña actual y nueva son requeridas.' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres.' });
+    }
+    const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.session.userId]);
+    const user = rows[0];
+    if (!user || !(await verifyPassword(currentPassword, user.password_hash))) {
+      return res.status(401).json({ error: 'Contraseña actual incorrecta.' });
+    }
+    const newHash = await hashPassword(newPassword);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, must_change_password = false WHERE id = $2',
+      [newHash, req.session.userId]
+    );
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 

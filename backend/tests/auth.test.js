@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { makeAgent, resetDb, seedTestUser } from './helpers/index.js';
+import { makeAgent, resetDb, seedTestUser, loginAgent } from './helpers/index.js';
 import { pool } from '../src/db.js';
 
 describe('auth', () => {
@@ -58,5 +58,62 @@ describe('auth', () => {
 
     const meRes = await agent.get('/auth/me');
     expect(meRes.body.user.mustChangePassword).toBe(true);
+  });
+});
+
+describe('POST /auth/change-password', () => {
+  beforeEach(async () => {
+    await resetDb();
+    await seedTestUser();
+  });
+
+  it('changes the password, clears must_change_password, and the old password stops working', async () => {
+    await pool.query(`UPDATE users SET must_change_password = true WHERE email = 'test@vaovao.co'`);
+    const agent = makeAgent();
+    const csrfToken = await loginAgent(agent);
+
+    const res = await agent.post('/auth/change-password')
+      .set('X-CSRF-Token', csrfToken)
+      .send({ currentPassword: 'Test1234!', newPassword: 'NewSecret456!' });
+    expect(res.status).toBe(200);
+
+    const meRes = await agent.get('/auth/me');
+    expect(meRes.body.user.mustChangePassword).toBe(false);
+
+    const oldLogin = await makeAgent().post('/auth/login').send({ email: 'test@vaovao.co', password: 'Test1234!' });
+    expect(oldLogin.status).toBe(401);
+
+    const newLogin = await makeAgent().post('/auth/login').send({ email: 'test@vaovao.co', password: 'NewSecret456!' });
+    expect(newLogin.status).toBe(200);
+  });
+
+  it('rejects an incorrect current password', async () => {
+    const agent = makeAgent();
+    const csrfToken = await loginAgent(agent);
+    const res = await agent.post('/auth/change-password')
+      .set('X-CSRF-Token', csrfToken)
+      .send({ currentPassword: 'wrong', newPassword: 'NewSecret456!' });
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects a new password shorter than 8 characters', async () => {
+    const agent = makeAgent();
+    const csrfToken = await loginAgent(agent);
+    const res = await agent.post('/auth/change-password')
+      .set('X-CSRF-Token', csrfToken)
+      .send({ currentPassword: 'Test1234!', newPassword: 'short' });
+    expect(res.status).toBe(400);
+  });
+
+  it('requires an authenticated session', async () => {
+    const res = await makeAgent().post('/auth/change-password').send({ currentPassword: 'x', newPassword: 'NewSecret456!' });
+    expect(res.status).toBe(401);
+  });
+
+  it('requires a valid CSRF token', async () => {
+    const agent = makeAgent();
+    await loginAgent(agent);
+    const res = await agent.post('/auth/change-password').send({ currentPassword: 'Test1234!', newPassword: 'NewSecret456!' });
+    expect(res.status).toBe(403);
   });
 });
