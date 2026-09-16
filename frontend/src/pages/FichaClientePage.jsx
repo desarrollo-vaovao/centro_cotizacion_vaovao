@@ -40,7 +40,9 @@ export function FichaClientePage() {
           </div>
           <Card className="mb-4">
             <h2 className="mb-3 text-sm font-semibold">Líneas de servicio</h2>
-            {data.lineas.length ? <DoughnutChart data={data.lineas} /> : <p className="text-sm text-text-secondary">Sin cotizaciones registradas.</p>}
+            {data.lineas.length
+              ? <div className="mx-auto max-w-xs"><DoughnutChart data={data.lineas} /></div>
+              : <p className="text-sm text-text-secondary">Sin cotizaciones registradas.</p>}
           </Card>
           <Card>
             <h2 className="mb-3 text-sm font-semibold">Cotizaciones de {clientName}</h2>
