@@ -91,3 +91,15 @@ new field.
   same page/endpoint later if wanted.
 - Automated invitation email.
 - Any in-app user management (create/deactivate accounts, roles/permissions).
+- **Backend enforcement of the forced-change gate.** The redirect that blocks
+  a flagged account from the rest of the app is frontend-only
+  (`ProtectedRoute`); no backend middleware rejects API calls to
+  `/clients`, `/quotations`, etc. while `must_change_password` is `true`.
+  A user with the temporary password could call the API directly (bypassing
+  the UI) and keep using it without ever changing the password. Accepted
+  as a known limitation for this internal tool's threat model (trusted
+  teammates, not an active-attacker scenario) — revisit if that changes.
+- **Rotating other live sessions on password change.** Only the session
+  performing the change is guaranteed intact; any other session the same
+  account already holds (e.g. if the temporary password leaked and was
+  used elsewhere first) is not invalidated by this flow.
