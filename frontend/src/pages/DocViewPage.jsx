@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -10,6 +10,32 @@ import { fmtMoney, fmtDate } from '../lib/utils.js';
 
 const AGENCY_INFO = { phone: '2509 2809', web: 'vaovao.co', email: 'info@vaovao.co', address: 'Edificio Narama, 15 Avenida 16-14, Zona 13, Ciudad de Guatemala, Oficina 329' };
 
+// html2canvas doesn't support `object-fit: contain` (stretches the image to
+// fill its box in the exported canvas even though it renders correctly on
+// screen), so we compute contained dimensions ourselves and size the <img>
+// with explicit width/height instead of relying on object-fit.
+function useContainedSize(src, maxW, maxH) {
+  const [size, setSize] = useState(null);
+
+  useEffect(() => {
+    if (!src) {
+      setSize(null);
+      return;
+    }
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      const ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+      setSize({ width: img.naturalWidth * ratio, height: img.naturalHeight * ratio });
+    };
+    img.src = src;
+    return () => { cancelled = true; };
+  }, [src, maxW, maxH]);
+
+  return size;
+}
+
 export function DocViewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -18,6 +44,8 @@ export function DocViewPage() {
   const { data: logos } = useLogos();
   const docRef = useRef(null);
   const [generating, setGenerating] = useState(false);
+  const agenciaSize = useContainedSize(logos?.logoAgencia, 130, 50);
+  const velarcSize = useContainedSize(logos?.logoVelarc, 100, 30);
 
   if (!quotation) return null;
 
@@ -56,7 +84,15 @@ export function DocViewPage() {
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             {logos?.logoAgencia
-              ? <img src={logos.logoAgencia} alt="Logo agencia" className="h-[50px] w-[130px] object-contain" />
+              ? (
+                <div className="flex h-[50px] w-[130px] items-center justify-start">
+                  <img
+                    src={logos.logoAgencia}
+                    alt="Logo agencia"
+                    style={agenciaSize ? { width: agenciaSize.width, height: agenciaSize.height } : { maxWidth: 130, maxHeight: 50 }}
+                  />
+                </div>
+              )
               : <div className="flex h-[50px] w-[130px] items-center justify-center rounded-lg border border-dashed border-border-strong text-[10.5px] text-text-secondary">Logo agencia</div>}
             <div className="mt-2 text-[9.5px] leading-relaxed text-text-secondary">
               Tel. {AGENCY_INFO.phone}<br />{AGENCY_INFO.web} · {AGENCY_INFO.email}<br />{AGENCY_INFO.address}
@@ -92,7 +128,15 @@ export function DocViewPage() {
         </div>
         <div className="mt-6 text-center">
           {logos?.logoVelarc
-            ? <img src={logos.logoVelarc} alt="Logo VELARC" className="mx-auto mb-1.5 h-[30px] w-[100px] object-contain" />
+            ? (
+              <div className="mx-auto mb-1.5 flex h-[30px] w-[100px] items-center justify-center">
+                <img
+                  src={logos.logoVelarc}
+                  alt="Logo VELARC"
+                  style={velarcSize ? { width: velarcSize.width, height: velarcSize.height } : { maxWidth: 100, maxHeight: 30 }}
+                />
+              </div>
+            )
             : <div className="mx-auto mb-1.5 flex h-[30px] w-[100px] items-center justify-center rounded-lg border border-dashed border-border-strong text-[10.5px] text-text-secondary">Logo VELARC</div>}
           <div className="text-[9.5px] text-[#a9a49a]">Guatemala, Ciudad · 502 2509 2809 · info@grupovelarc.com</div>
         </div>
