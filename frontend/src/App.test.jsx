@@ -4,7 +4,7 @@ import { App } from './App.jsx';
 import { authApi } from './api/auth.js';
 
 vi.mock('./api/auth.js', () => ({
-  authApi: { me: vi.fn(), login: vi.fn(), logout: vi.fn() }
+  authApi: { me: vi.fn(), login: vi.fn(), logout: vi.fn(), changePassword: vi.fn() }
 }));
 
 describe('App', () => {
@@ -15,5 +15,15 @@ describe('App', () => {
     window.history.pushState({}, '', '/dashboard');
     render(<App />);
     expect(await screen.findByRole('button', { name: 'Entrar' })).toBeInTheDocument();
+  });
+
+  it('redirects a user who must change their password to /cambiar-contrasena', async () => {
+    authApi.me.mockResolvedValue({
+      user: { id: 1, email: 'a@vaovao.co', name: 'A', mustChangePassword: true },
+      csrfToken: 'tok'
+    });
+    window.history.pushState({}, '', '/dashboard');
+    render(<App />);
+    expect(await screen.findByText('Cambia tu contraseña')).toBeInTheDocument();
   });
 });

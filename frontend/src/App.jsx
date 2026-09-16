@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { ProtectedRoute } from './components/layout/ProtectedRoute.jsx';
 import { AppLayout } from './components/layout/AppLayout.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
+import { ChangePasswordPage } from './pages/ChangePasswordPage.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
 import { NuevaCotizacionPage } from './pages/NuevaCotizacionPage.jsx';
 import { HistorialPage } from './pages/HistorialPage.jsx';
@@ -19,6 +20,14 @@ export function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/cambiar-contrasena"
+              element={
+                <ProtectedRoute>
+                  <ChangePasswordPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/"
               element={
