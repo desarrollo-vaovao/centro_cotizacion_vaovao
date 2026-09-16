@@ -53,6 +53,17 @@ describe('ChangePasswordPage', () => {
     expect(authApi.changePassword).not.toHaveBeenCalled();
   });
 
+  it('shows an error and does not submit when the new password is shorter than 8 characters', async () => {
+    renderPage();
+    await screen.findByLabelText('Contraseña actual (temporal)');
+    await userEvent.type(screen.getByLabelText('Contraseña actual (temporal)'), 'Temp1234!');
+    await userEvent.type(screen.getByLabelText('Nueva contraseña'), 'short1');
+    await userEvent.type(screen.getByLabelText('Confirmar nueva contraseña'), 'short1');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar contraseña' }));
+    expect(await screen.findByText('La nueva contraseña debe tener al menos 8 caracteres.')).toBeInTheDocument();
+    expect(authApi.changePassword).not.toHaveBeenCalled();
+  });
+
   it('shows the backend error message when the current password is wrong', async () => {
     authApi.changePassword.mockRejectedValue(Object.assign(new Error('Contraseña actual incorrecta.'), { status: 401 }));
     renderPage();

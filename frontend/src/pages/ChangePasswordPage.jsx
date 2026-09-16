@@ -22,6 +22,10 @@ export function ChangePasswordPage() {
       setError('Las contraseñas nuevas no coinciden.');
       return;
     }
+    if (newPassword.length < 8) {
+      setError('La nueva contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
     setSubmitting(true);
     try {
       await authApi.changePassword(currentPassword, newPassword);
