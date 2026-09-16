@@ -3,6 +3,7 @@ import { notifySessionExpired } from './sessionExpired.js';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const NO_SESSION_EXPIRY_PATHS = ['/auth/login', '/auth/change-password'];
 
 async function request(path, { method = 'GET', body } = {}) {
   const headers = { 'Content-Type': 'application/json' };
@@ -27,7 +28,7 @@ async function request(path, { method = 'GET', body } = {}) {
   if (!res.ok) {
     const error = new Error((data && data.error) || `Error ${res.status}`);
     error.status = res.status;
-    if (res.status === 401 && !path.startsWith('/auth/login')) {
+    if (res.status === 401 && !NO_SESSION_EXPIRY_PATHS.some((p) => path.startsWith(p))) {
       notifySessionExpired();
     }
     throw error;
