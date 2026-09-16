@@ -59,4 +59,26 @@ describe('migrations', () => {
     const { runMigrations } = await import('../src/migrations/run.js');
     await expect(runMigrations()).resolves.not.toThrow();
   });
+
+  it('nulls out orphaned quotations.executive_id values before re-adding the FK, instead of crashing', async () => {
+    // Simulate a database that still has a quotation pointing at an id that
+    // no longer exists in users (e.g. an id that used to live in the
+    // now-dropped executives table). We have to drop the FK constraint
+    // first since it's already in place from the initial migration run in
+    // globalSetup — this recreates the pre-migration state the fix guards
+    // against, it doesn't bypass anything the migration itself relies on.
+    await pool.query('ALTER TABLE quotations DROP CONSTRAINT quotations_executive_id_fkey');
+    const { rows } = await pool.query(
+      `INSERT INTO quotations (correlativo_general, pais, linea_servicio, executive_id, proyecto, monto)
+       VALUES ('PC-2026-999', 'Guatemala', 'Video', 999999, 'Proyecto huérfano', 100)
+       RETURNING id`
+    );
+    const orphanId = rows[0].id;
+
+    const { runMigrations } = await import('../src/migrations/run.js');
+    await expect(runMigrations()).resolves.not.toThrow();
+
+    const { rows: after } = await pool.query('SELECT executive_id FROM quotations WHERE id = $1', [orphanId]);
+    expect(after[0].executive_id).toBeNull();
+  });
 });
