@@ -45,7 +45,7 @@ export function ChangePasswordPage() {
         <p className="mb-4 text-xs text-text-secondary">
           Tu cuenta tiene una contraseña temporal. Elige una nueva para continuar.
         </p>
-        <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3">
           <div>
             <label htmlFor="currentPassword" className="mb-1 block text-xs font-medium text-text-secondary">
               Contraseña actual (temporal)
