@@ -61,6 +61,11 @@ router.get('/me', async (req, res, next) => {
     );
     const user = rows[0];
     if (!user) return res.status(401).json({ error: 'No autenticado.' });
+    // req.session.role is cached at login time and can drift from the DB
+    // (e.g. an out-of-band role promotion). requireOwner gates on the
+    // session value, so self-heal it here — the frontend already calls
+    // /auth/me on every app load via AuthContext.
+    if (req.session.role !== user.role) req.session.role = user.role;
     res.json({
       user: { id: user.id, email: user.email, name: user.name, mustChangePassword: user.must_change_password, role: user.role },
       csrfToken: req.session.csrfToken

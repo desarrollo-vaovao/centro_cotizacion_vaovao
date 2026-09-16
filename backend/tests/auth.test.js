@@ -74,6 +74,28 @@ describe('auth', () => {
     const res = await agent.post('/auth/login').send({ email: 'exec@vaovao.co', password: 'Test1234!' });
     expect(res.body.user.role).toBe('executive');
   });
+
+  it('self-heals a stale session role on /auth/me after an out-of-band promotion, not just the response body', async () => {
+    await seedTestExecutive();
+    const agent = makeAgent();
+    const loginRes = await agent.post('/auth/login').send({ email: 'exec@vaovao.co', password: 'Test1234!' });
+    expect(loginRes.body.user.role).toBe('executive');
+
+    // Simulate an owner promoting this account directly in the database
+    // while the account has a live session that still caches role=executive.
+    await pool.query(`UPDATE users SET role = 'owner' WHERE email = 'exec@vaovao.co'`);
+
+    const meRes = await agent.get('/auth/me');
+    expect(meRes.body.user.role).toBe('owner');
+
+    // Prove the SESSION itself (not just this response body) was updated:
+    // an owner-gated route should now succeed on the same agent/session,
+    // with no re-login.
+    const createRes = await agent.post('/executives')
+      .set('X-CSRF-Token', meRes.body.csrfToken)
+      .send({ name: 'Nuevo Usuario', email: 'nuevo@vaovao.co' });
+    expect(createRes.status).toBe(201);
+  });
 });
 
 describe('POST /auth/change-password', () => {
