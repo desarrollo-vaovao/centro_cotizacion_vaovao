@@ -22,6 +22,9 @@ router.post('/login', createLoginLimiter(), async (req, res, next) => {
     if (!user || !(await verifyPassword(password, user.password_hash))) {
       return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
     }
+    // Regenerate the session ID at the moment privilege is granted, so a
+    // pre-auth session ID (e.g. planted via a fixation attack) is never
+    // reused as an authenticated session.
     req.session.regenerate((regenErr) => {
       if (regenErr) return next(regenErr);
       req.session.userId = user.id;
@@ -64,7 +67,7 @@ router.get('/me', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/change-password', requireAuth, verifyCsrf, async (req, res, next) => {
+router.post('/change-password', createLoginLimiter(), requireAuth, verifyCsrf, async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) {
