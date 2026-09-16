@@ -143,3 +143,16 @@ error handling carries over unmodified.
 - More than two roles, or per-user granular permissions.
 - Editing a user's name/email after creation (only create, reset password,
   delete are in scope).
+- **Email format validation** on user creation — any non-empty string is
+  accepted as the login email today.
+- **Only one path exists to create an owner:** the seed script
+  (`backend/src/seed.js`), which always sets `role = 'owner'`. There is no
+  in-app way to promote an existing account, so if the sole owner account is
+  ever lost, recovery is re-running the seed script against production
+  (same recovery path as a lost admin password) — same bus-factor tradeoff
+  accepted for the single admin account before this feature existed.
+- **Resetting your own password** (an owner can target their own row from
+  the Usuarios panel) forces that account through the change-password flow
+  on its next login, same as anyone else's reset — the confirm dialog
+  doesn't call this out specially, so it's worth knowing before clicking it
+  on your own row.
