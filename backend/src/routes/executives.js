@@ -25,7 +25,8 @@ router.post('/', requireOwner, async (req, res, next) => {
        RETURNING id, name, email, role`,
       [name.trim(), email.toLowerCase().trim(), passwordHash]
     );
-    res.status(201).json({ ...rows[0], tempPassword });
+    const created = rows[0];
+    res.status(201).json({ id: created.id, name: created.name, email: created.email, role: created.role, tempPassword });
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Ese correo ya está en uso.' });
     next(err);
@@ -34,24 +35,36 @@ router.post('/', requireOwner, async (req, res, next) => {
 
 router.post('/:id/reset-password', requireOwner, async (req, res, next) => {
   try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Identificador inválido.' });
     const tempPassword = generateTempPassword();
     const passwordHash = await hashPassword(tempPassword);
     const { rowCount } = await pool.query(
       'UPDATE users SET password_hash = $1, must_change_password = true WHERE id = $2',
-      [passwordHash, req.params.id]
+      [passwordHash, id]
     );
     if (!rowCount) return res.status(404).json({ error: 'Usuario no encontrado.' });
+    // Revoke any live session the affected user is holding, so a
+    // password reset actually forces them out immediately instead of
+    // leaving their old server-side session valid for up to 8h.
+    await pool.query(`DELETE FROM session WHERE (sess->>'userId')::int = $1`, [id]);
     res.json({ tempPassword });
   } catch (err) { next(err); }
 });
 
 router.delete('/:id', requireOwner, async (req, res, next) => {
   try {
-    if (String(req.params.id) === String(req.session.userId)) {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Identificador inválido.' });
+    if (id === req.session.userId) {
       return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta.' });
     }
-    const { rowCount } = await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
+    const { rowCount } = await pool.query('DELETE FROM users WHERE id = $1', [id]);
     if (!rowCount) return res.status(404).json({ error: 'Usuario no encontrado.' });
+    // Revoke any live session the deleted user is holding, so access is
+    // actually cut off immediately instead of the old cookie continuing
+    // to work against every route but /auth/me for up to 8h.
+    await pool.query(`DELETE FROM session WHERE (sess->>'userId')::int = $1`, [id]);
     res.status(204).end();
   } catch (err) {
     if (err.code === '23503') return res.status(409).json({ error: 'No se puede eliminar: el usuario tiene cotizaciones asociadas.' });

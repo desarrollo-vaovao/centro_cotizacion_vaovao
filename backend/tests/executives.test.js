@@ -69,6 +69,20 @@ describe('executives (users with role)', () => {
     expect(newLogin.body.user.mustChangePassword).toBe(true);
   });
 
+  it('revokes the target user\'s live session on password reset', async () => {
+    const created = (await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Mishel Velez', email: 'mishel@vaovao.co' })).body;
+
+    const targetAgent = makeAgent();
+    const loginRes = await targetAgent.post('/auth/login').send({ email: 'mishel@vaovao.co', password: created.tempPassword });
+    expect(loginRes.status).toBe(200);
+
+    const res = await agent.post(`/executives/${created.id}/reset-password`).set('X-CSRF-Token', csrfToken);
+    expect(res.status).toBe(200);
+
+    const stale = await targetAgent.get('/clients');
+    expect(stale.status).toBe(401);
+  });
+
   it('a non-owner cannot reset another user\'s password', async () => {
     const created = (await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Mishel Velez', email: 'mishel@vaovao.co' })).body;
     await seedTestExecutive();
@@ -104,6 +118,49 @@ describe('executives (users with role)', () => {
     const execCsrf = await loginAgent2(execAgent);
     const res = await execAgent.delete(`/executives/${created.id}`).set('X-CSRF-Token', execCsrf);
     expect(res.status).toBe(403);
+  });
+
+  it('refuses a self-delete attempt disguised with URL-encoded id formatting, and does not delete the account', async () => {
+    const me = await agent.get('/auth/me');
+    const ownId = me.body.user.id;
+
+    // A leading space in the URL (%201) and a leading '+' both fail a naive
+    // `String(req.params.id) === String(req.session.userId)` comparison
+    // while Postgres would still resolve them to the same integer id.
+    const spaced = await agent.delete(`/executives/%20${ownId}`).set('X-CSRF-Token', csrfToken);
+    expect(spaced.status).toBe(400);
+
+    const plussed = await agent.delete(`/executives/+${ownId}`).set('X-CSRF-Token', csrfToken);
+    expect(plussed.status).toBe(400);
+
+    const me2 = await agent.get('/auth/me');
+    expect(me2.status).toBe(200);
+    expect(me2.body.user.id).toBe(ownId);
+  });
+
+  it('returns 400 (not 500) for a non-numeric id on delete and reset-password', async () => {
+    const del = await agent.delete('/executives/abc').set('X-CSRF-Token', csrfToken);
+    expect(del.status).toBe(400);
+
+    const reset = await agent.post('/executives/abc/reset-password').set('X-CSRF-Token', csrfToken);
+    expect(reset.status).toBe(400);
+  });
+
+  it('revokes the deleted user\'s live session, not just their identity lookup', async () => {
+    const created = (await agent.post('/executives').set('X-CSRF-Token', csrfToken).send({ name: 'Mishel Velez', email: 'mishel@vaovao.co' })).body;
+
+    const targetAgent = makeAgent();
+    const loginRes = await targetAgent.post('/auth/login').send({ email: 'mishel@vaovao.co', password: created.tempPassword });
+    expect(loginRes.status).toBe(200);
+
+    const del = await agent.delete(`/executives/${created.id}`).set('X-CSRF-Token', csrfToken);
+    expect(del.status).toBe(204);
+
+    // The old session cookie should now be dead on a normal authenticated
+    // route (not /auth/me, which would 401 anyway just from the user row
+    // being gone) — proving the session itself was revoked.
+    const stale = await targetAgent.get('/clients');
+    expect(stale.status).toBe(401);
   });
 
   it('refuses to delete a user that has quotations', async () => {
