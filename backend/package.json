@@ -9,7 +9,6 @@
     "start": "node src/index.js",
     "migrate": "node src/migrations/run.js",
     "seed": "node src/seed.js",
-    "reset-transactional-data": "node src/scripts/resetTransactionalData.js",
     "test": "vitest run"
   },
   "dependencies": {
