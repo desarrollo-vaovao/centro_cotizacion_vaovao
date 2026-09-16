@@ -8,6 +8,7 @@ import { Select } from '../components/ui/select.jsx';
 import { Button } from '../components/ui/button.jsx';
 import { Badge } from '../components/ui/badge.jsx';
 import { KpiCard, DollarIcon, CheckCircleIcon, XCircleIcon, TargetIcon } from '../components/kpi/KpiCard.jsx';
+import { DoughnutChart } from '../components/charts/DoughnutChart.jsx';
 import { fmtMoney, fmtDate } from '../lib/utils.js';
 
 export function FichaClientePage() {
@@ -37,6 +38,10 @@ export function FichaClientePage() {
             <KpiCard label="Perdido" value={fmtMoney(data.kpis.montoPerdido)} icon={<XCircleIcon />} color="red" />
             <KpiCard label="Tasa de aprobación" value={data.kpis.tasa !== null ? `${data.kpis.tasa}%` : '—'} icon={<TargetIcon />} color="orange" />
           </div>
+          <Card className="mb-4">
+            <h2 className="mb-3 text-sm font-semibold">Líneas de servicio</h2>
+            {data.lineas.length ? <DoughnutChart data={data.lineas} /> : <p className="text-sm text-text-secondary">Sin cotizaciones registradas.</p>}
+          </Card>
           <Card>
             <h2 className="mb-3 text-sm font-semibold">Cotizaciones de {clientName}</h2>
             <table className="w-full text-sm">
