@@ -10,6 +10,21 @@ import { fmtMoney, fmtDate } from '../lib/utils.js';
 
 const AGENCY_INFO = { phone: '2509 2809', web: 'vaovao.co', email: 'info@vaovao.co', address: 'Edificio Narama, 15 Avenida 16-14, Zona 13, Ciudad de Guatemala, Oficina 329' };
 
+// The PDF is a single raster of the rendered document. A full-page PNG at 2x
+// weighed ~4MB; JPEG at these qualities is a fraction of that with no visible
+// loss on this layout, and the ladder steps down only if a document (e.g.
+// with a heavy logo) still lands above the cap.
+const MAX_PDF_BYTES = 1_000_000;
+const JPEG_QUALITIES = [0.85, 0.7, 0.55];
+
+function buildPdf(canvas, quality) {
+  const pdf = new jsPDF({ unit: 'pt', format: 'letter', compress: true });
+  const w = pdf.internal.pageSize.getWidth() - 60;
+  const h = w * (canvas.height / canvas.width);
+  pdf.addImage(canvas.toDataURL('image/jpeg', quality), 'JPEG', 30, 30, w, h, undefined, 'FAST');
+  return pdf;
+}
+
 // html2canvas doesn't support `object-fit: contain` (stretches the image to
 // fill its box in the exported canvas even though it renders correctly on
 // screen), so we compute contained dimensions ourselves and size the <img>
@@ -57,12 +72,11 @@ export function DocViewPage() {
     setGenerating(true);
     try {
       const canvas = await html2canvas(docRef.current, { scale: 2, backgroundColor: '#ffffff' });
-      const img = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const ratio = canvas.height / canvas.width;
-      const w = pageW - 60;
-      pdf.addImage(img, 'PNG', 30, 30, w, w * ratio);
+      let pdf;
+      for (const quality of JPEG_QUALITIES) {
+        pdf = buildPdf(canvas, quality);
+        if (pdf.output('blob').size <= MAX_PDF_BYTES) break;
+      }
       pdf.save(`${quotation.correlativoGeneral.replace(/\s+/g, '_')}.pdf`);
     } catch {
       window.print();
