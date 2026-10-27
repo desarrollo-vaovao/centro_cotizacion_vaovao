@@ -16,8 +16,9 @@ vi.mock('jspdf', () => ({
   jsPDF: vi.fn().mockImplementation((options) => {
     const instance = {
       options,
-      internal: { pageSize: { getWidth: () => 612 } },
+      internal: { pageSize: { getWidth: () => 612, getHeight: () => 792 } },
       addImage: vi.fn(),
+      addPage: vi.fn(),
       save: vi.fn(),
       output: vi.fn(() => ({ size: pdf.sizes.shift() ?? 400_000 }))
     };
@@ -70,6 +71,24 @@ describe('DocViewPage', () => {
     expect(pdf.instances[0].options.compress).toBe(true);
     expect(pdf.canvas.toDataURL).toHaveBeenCalledWith('image/jpeg', 0.85);
     expect(pdf.instances[0].addImage.mock.calls[0][1]).toBe('JPEG');
+  });
+
+  it('splits a long document across several PDF pages', async () => {
+    const ctx = { fillRect: vi.fn(), drawImage: vi.fn(), fillStyle: '' };
+    const realCreate = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag, opts) => {
+      if (tag !== 'canvas') return realCreate(tag, opts);
+      return { getContext: () => ctx, toDataURL: vi.fn(() => 'data:image/jpeg;base64,y'), width: 0, height: 0 };
+    });
+    // 1120px wide => 552pt content width; a page holds 732pt = ~1451px, so 3200px needs 3 pages.
+    pdf.canvas = { toDataURL: vi.fn(), width: 1120, height: 3200 };
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Descargar PDF' }));
+
+    await waitFor(() => expect(pdf.instances[0].save).toHaveBeenCalled());
+    expect(pdf.instances[0].addPage).toHaveBeenCalledTimes(2);
+    expect(pdf.instances[0].addImage).toHaveBeenCalledTimes(3);
+    document.createElement.mockRestore();
   });
 
   it('lowers the JPEG quality until the PDF fits under 1MB', async () => {

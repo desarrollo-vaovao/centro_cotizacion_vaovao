@@ -17,11 +17,53 @@ const AGENCY_INFO = { phone: '2509 2809', web: 'vaovao.co', email: 'info@vaovao.
 const MAX_PDF_BYTES = 1_000_000;
 const JPEG_QUALITIES = [0.85, 0.7, 0.55];
 
-function buildPdf(canvas, quality) {
+const PAGE_MARGIN = 30;
+// Rows shorter than this fraction of a page are never used as a break point,
+// so a page can't end up nearly empty just because a row boundary was close.
+const MIN_PAGE_FILL = 0.5;
+
+// Picks where each page ends (in canvas px). Breaks land on the top of a
+// [data-pdf-break] element whenever one fits, so lines of the detalle aren't
+// sliced through the middle; otherwise the page is cut at its full height.
+function pageBreaks(totalHeight, pageHeight, candidates) {
+  const breaks = [];
+  let start = 0;
+  while (totalHeight - start > pageHeight) {
+    const limit = start + pageHeight;
+    const fit = candidates.filter((c) => c > start + pageHeight * MIN_PAGE_FILL && c <= limit);
+    const end = fit.length ? Math.max(...fit) : limit;
+    breaks.push(end);
+    start = end;
+  }
+  return breaks;
+}
+
+function buildPdf(canvas, quality, breakCandidates = []) {
   const pdf = new jsPDF({ unit: 'pt', format: 'letter', compress: true });
-  const w = pdf.internal.pageSize.getWidth() - 60;
-  const h = w * (canvas.height / canvas.width);
-  pdf.addImage(canvas.toDataURL('image/jpeg', quality), 'JPEG', 30, 30, w, h, undefined, 'FAST');
+  const w = pdf.internal.pageSize.getWidth() - PAGE_MARGIN * 2;
+  const pxPerPt = canvas.width / w;
+  const pageHeightPt = (pdf.internal.pageSize.getHeight?.() ?? 792) - PAGE_MARGIN * 2;
+  const breaks = pageBreaks(canvas.height, pageHeightPt * pxPerPt, breakCandidates);
+
+  if (!breaks.length) {
+    const h = w * (canvas.height / canvas.width);
+    pdf.addImage(canvas.toDataURL('image/jpeg', quality), 'JPEG', PAGE_MARGIN, PAGE_MARGIN, w, h, undefined, 'FAST');
+    return pdf;
+  }
+
+  const edges = [0, ...breaks, canvas.height];
+  for (let i = 0; i < edges.length - 1; i++) {
+    const sliceHeight = Math.round(edges[i + 1] - edges[i]);
+    const slice = document.createElement('canvas');
+    slice.width = canvas.width;
+    slice.height = sliceHeight;
+    const ctx = slice.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, slice.width, slice.height);
+    ctx.drawImage(canvas, 0, Math.round(edges[i]), canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+    if (i > 0) pdf.addPage();
+    pdf.addImage(slice.toDataURL('image/jpeg', quality), 'JPEG', PAGE_MARGIN, PAGE_MARGIN, w, sliceHeight / pxPerPt, undefined, 'FAST');
+  }
   return pdf;
 }
 
@@ -71,10 +113,15 @@ export function DocViewPage() {
   async function onDownloadPdf() {
     setGenerating(true);
     try {
-      const canvas = await html2canvas(docRef.current, { scale: 2, backgroundColor: '#ffffff' });
+      const root = docRef.current;
+      const canvas = await html2canvas(root, { scale: 2, backgroundColor: '#ffffff' });
+      const scale = canvas.width / root.offsetWidth;
+      const rootTop = root.getBoundingClientRect().top;
+      const breakCandidates = [...root.querySelectorAll('[data-pdf-break]')]
+        .map((el) => (el.getBoundingClientRect().top - rootTop) * scale);
       let pdf;
       for (const quality of JPEG_QUALITIES) {
-        pdf = buildPdf(canvas, quality);
+        pdf = buildPdf(canvas, quality, breakCandidates);
         if (pdf.output('blob').size <= MAX_PDF_BYTES) break;
       }
       pdf.save(`${quotation.correlativoGeneral.replace(/\s+/g, '_')}.pdf`);
@@ -95,8 +142,7 @@ export function DocViewPage() {
       </div>
       <div
         ref={docRef}
-        className="relative mx-auto flex max-w-[560px] flex-col rounded-2xl border border-border bg-paper p-8 shadow-sm"
-        style={{ aspectRatio: '8.5 / 11' }}
+        className="relative mx-auto flex min-h-[725px] max-w-[560px] flex-col rounded-2xl border border-border bg-paper p-8 shadow-sm"
       >
         <div className="absolute inset-x-0 top-0 h-[5px] bg-accent" />
         <div className="mb-4 flex items-start justify-between gap-4">
@@ -132,13 +178,17 @@ export function DocViewPage() {
         <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border">
           <div className="flex bg-ink text-[10.5px] font-medium text-white"><div className="flex-1 px-2.5 py-1.5">Detalle</div><div className="w-[110px] border-l border-white/25 px-2.5 py-1.5">Costo</div></div>
           <div className="flex flex-1">
-            <div className="flex-1 border-r border-border p-2.5 text-[11.5px] leading-loose">
-              {quotation.detalle.map((d, i) => <div key={i}>• {d}</div>)}
+            <div className="flex-1 border-r border-border p-2.5 text-[11.5px] leading-relaxed">
+              {quotation.detalle.map((d, i) => (
+                <div key={i} data-pdf-break className="mb-1.5 flex gap-1.5 whitespace-pre-line break-words">
+                  <span>•</span><span className="min-w-0 flex-1">{d}</span>
+                </div>
+              ))}
             </div>
             <div className="flex w-[110px] items-end justify-end p-2.5 text-xs font-medium">{fmtMoney(quotation.monto, quotation.moneda)}</div>
           </div>
         </div>
-        <div className="mt-3 flex justify-end">
+        <div data-pdf-break className="mt-3 flex justify-end">
           <div className="flex overflow-hidden rounded-lg border border-border">
             <div className="bg-[#faf8f4] px-3.5 py-1.5 text-[11.5px] font-medium">Total más impuestos</div>
             <div className="bg-accent px-3.5 py-1.5 text-xs font-semibold text-accent-ink">{fmtMoney(quotation.monto + quotation.impuestos, quotation.moneda)}</div>
