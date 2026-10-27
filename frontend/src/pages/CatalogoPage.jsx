@@ -6,23 +6,12 @@ import { useServiceLines, useCreateServiceLine, useUpdateServiceLine, useDeleteS
 import { useLogos, useSaveLogos, useDeleteLogo } from '../api/settings.js';
 import { Card } from '../components/ui/card.jsx';
 import { Button } from '../components/ui/button.jsx';
+import { TrashIcon } from '../components/ui/icons.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { Select } from '../components/ui/select.jsx';
 
 const COUNTRIES = ['Guatemala', 'El Salvador', 'Honduras', 'Nicaragua', 'Costa Rica', 'Panamá'];
 const MAX_LOGO_BYTES = 1.5 * 1024 * 1024;
-
-function TrashIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 6h18" />
-      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
-      <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" />
-      <path d="M10 11v6" />
-      <path d="M14 11v6" />
-    </svg>
-  );
-}
 
 function ClientsPanel() {
   const { data: clients = [] } = useClients();
@@ -217,7 +206,7 @@ function ServiceLinesPanel() {
               defaultValue={line.name}
               onBlur={(e) => { if (e.target.value.trim() && e.target.value !== line.name) updateLine.mutate({ id: line.id, name: e.target.value }); }}
             />
-            <Button variant="danger" size="small" onClick={() => deleteLine.mutate(line.id)}>×</Button>
+            <Button variant="danger" size="small" aria-label={`Eliminar línea ${line.name}`} className="px-2" onClick={() => deleteLine.mutate(line.id)}><TrashIcon /></Button>
           </div>
         ))}
       </div>
@@ -263,7 +252,7 @@ function LogosPanel() {
           <span className="w-40 text-xs text-text-secondary">{label}</span>
           {logos && logos[field] ? <img src={logos[field]} alt={label} className="h-11 w-24 object-contain" /> : <span className="text-xs text-text-secondary">Sin logo</span>}
           <input type="file" accept="image/*" aria-label={`Subir ${label}`} onChange={(e) => onFileChange(field, e.target.files[0])} />
-          {logos && logos[field] && <Button size="small" variant="danger" onClick={() => deleteLogo.mutate(key)}>Quitar</Button>}
+          {logos && logos[field] && <Button size="small" variant="danger" className="px-2" aria-label="Quitar logo" onClick={() => deleteLogo.mutate(key)}><TrashIcon /></Button>}
         </div>
       ))}
       {error && <p className="text-xs text-danger">{error}</p>}

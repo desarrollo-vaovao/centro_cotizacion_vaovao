@@ -9,6 +9,7 @@ import { Badge, STATUS_CLASSES } from '../components/ui/badge.jsx';
 import { Select } from '../components/ui/select.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { Button } from '../components/ui/button.jsx';
+import { TrashIcon } from '../components/ui/icons.jsx';
 import { fmtMoney, fmtDate } from '../lib/utils.js';
 
 const STATUSES = ['Enviada', 'En Proceso - Cliente', 'Aprobada', 'Denegada'];
@@ -136,7 +137,7 @@ export function HistorialPage() {
                         variant="danger" size="small" className="ml-1.5 px-2"
                         onClick={() => onDelete(q)}
                       >
-                        Eliminar
+                        <TrashIcon />
                       </Button>
                     )}
                   </td>

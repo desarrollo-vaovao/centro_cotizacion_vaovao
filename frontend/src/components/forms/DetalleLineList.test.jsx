@@ -14,7 +14,7 @@ describe('DetalleLineList', () => {
   it('removes a line', async () => {
     const onChange = vi.fn();
     render(<DetalleLineList value={['Línea 1', 'Línea 2']} onChange={onChange} />);
-    const removeButtons = screen.getAllByRole('button', { name: '×' });
+    const removeButtons = screen.getAllByRole('button', { name: /Eliminar línea/ });
     await userEvent.click(removeButtons[0]);
     expect(onChange).toHaveBeenCalledWith(['Línea 2']);
   });
