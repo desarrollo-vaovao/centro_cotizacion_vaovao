@@ -128,6 +128,46 @@ router.patch('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Hard delete. A 'Sustituida' quotation is history for a newer version, so it
+// can't be removed until that newer version is deleted first. Deleting the
+// newest version of an adjusted quotation reinstates the one it replaced.
+router.delete('/:id', async (req, res, next) => {
+  let client;
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(404).json({ error: 'Cotización no encontrada.' });
+
+    client = await pool.connect();
+    await client.query('BEGIN');
+    const found = await client.query('SELECT id, estatus, previous_version_id FROM quotations WHERE id = $1 FOR UPDATE', [id]);
+    const quotation = found.rows[0];
+    if (!quotation) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Cotización no encontrada.' });
+    }
+    if (quotation.estatus === 'Sustituida') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'No se puede eliminar una cotización sustituida. Elimina primero su versión más reciente.' });
+    }
+    if (quotation.previous_version_id) {
+      await client.query(
+        `UPDATE quotations SET estatus = 'Enviada', superseded_by = NULL WHERE id = $1 AND superseded_by = $2`,
+        [quotation.previous_version_id, id]
+      );
+    }
+    await client.query('DELETE FROM quotations WHERE id = $1', [id]);
+    await client.query('COMMIT');
+    res.status(204).end();
+  } catch (err) {
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch { /* connection may already be dead */ }
+    }
+    next(err);
+  } finally {
+    client?.release();
+  }
+});
+
 router.post('/:id/adjust', async (req, res, next) => {
   let client;
   try {

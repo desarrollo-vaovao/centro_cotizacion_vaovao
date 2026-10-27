@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuotations, useUpdateQuotation } from '../api/quotations.js';
+import { useQuotations, useUpdateQuotation, useDeleteQuotation } from '../api/quotations.js';
 import { useClients } from '../api/clients.js';
 import { useExecutives } from '../api/executives.js';
 import { useServiceLines } from '../api/serviceLines.js';
@@ -29,6 +29,16 @@ export function HistorialPage() {
     estatus: filterEstatus || undefined
   });
   const updateQuotation = useUpdateQuotation();
+  const deleteQuotation = useDeleteQuotation();
+  const [deleteError, setDeleteError] = useState('');
+
+  async function onDelete(q) {
+    setDeleteError('');
+    if (!window.confirm(`¿Eliminar la cotización ${q.correlativoGeneral}${q.version > 1 ? ` v${q.version}` : ''} (${q.proyecto})? Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteQuotation.mutateAsync(q.id);
+    } catch (err) { setDeleteError(err.message); }
+  }
 
   // Línea de servicio and the date range aren't sent to the backend — the
   // page already has the full filtered-by-server result set in memory, so
@@ -80,6 +90,7 @@ export function HistorialPage() {
           </Button>
         )}
       </div>
+      {deleteError && <p role="alert" className="mb-2 text-sm text-danger">{deleteError}</p>}
       <Card>
         <table className="w-full text-sm">
           <thead>
@@ -118,6 +129,15 @@ export function HistorialPage() {
                     <Link to={`/cotizacion/${q.id}`}><Button size="small">Ver</Button></Link>
                     {q.estatus === 'Enviada' && (
                       <Link to={`/ajustar/${q.id}`} className="ml-1.5"><Button size="small">Ajustar</Button></Link>
+                    )}
+                    {!superseded && (
+                      <Button
+                        aria-label={`Eliminar cotización ${q.correlativoGeneral}`}
+                        variant="danger" size="small" className="ml-1.5 px-2"
+                        onClick={() => onDelete(q)}
+                      >
+                        Eliminar
+                      </Button>
                     )}
                   </td>
                 </tr>

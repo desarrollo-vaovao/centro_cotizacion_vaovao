@@ -68,6 +68,14 @@ export function useUpdateQuotation() {
   });
 }
 
+export function useDeleteQuotation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/quotations/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['quotations'] })
+  });
+}
+
 export function useAdjustQuotation() {
   const queryClient = useQueryClient();
   return useMutation({

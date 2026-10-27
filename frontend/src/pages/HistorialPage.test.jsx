@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { HistorialPage } from './HistorialPage.jsx';
 import { api } from '../lib/apiClient.js';
 
-vi.mock('../lib/apiClient.js', () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn() } }));
+vi.mock('../lib/apiClient.js', () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() } }));
 
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -90,5 +90,32 @@ describe('HistorialPage', () => {
     expect(screen.getByLabelText('Filtrar por línea de servicio')).toHaveValue('');
     expect(await screen.findByText('PC-2026-001')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Limpiar filtros' })).not.toBeInTheDocument();
+  });
+
+  it('deletes a quotation after confirmation', async () => {
+    api.delete.mockResolvedValue(null);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPage();
+    await screen.findByText('PC-2026-001');
+    await userEvent.click(screen.getByRole('button', { name: 'Eliminar cotización PC-2026-001' }));
+    expect(window.confirm).toHaveBeenCalled();
+    expect(api.delete).toHaveBeenCalledWith('/quotations/1');
+  });
+
+  it('does not delete when the confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderPage();
+    await screen.findByText('PC-2026-001');
+    await userEvent.click(screen.getByRole('button', { name: 'Eliminar cotización PC-2026-001' }));
+    expect(api.delete).not.toHaveBeenCalled();
+  });
+
+  it('shows the server error when the delete is rejected', async () => {
+    api.delete.mockRejectedValue(new Error('No se puede eliminar'));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPage();
+    await screen.findByText('PC-2026-001');
+    await userEvent.click(screen.getByRole('button', { name: 'Eliminar cotización PC-2026-001' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se puede eliminar');
   });
 });

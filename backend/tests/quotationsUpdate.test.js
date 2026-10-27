@@ -93,4 +93,43 @@ describe('quotations update/adjust', () => {
     });
     expect(secondAdjust.status).toBe(409);
   });
+
+  describe('DELETE /quotations/:id', () => {
+    const adjustBody = (client, exec) => ({
+      clientId: client.id, pais: 'Guatemala', lineaServicio: 'Video', executiveId: exec.id,
+      proyecto: 'Contenidos ajustados', detalle: ['Edición'], monto: 3900, impuestos: 468
+    });
+
+    it('deletes a quotation', async () => {
+      const { quotation } = await createQuotation(agent, csrfToken);
+      const res = await agent.delete(`/quotations/${quotation.id}`).set('X-CSRF-Token', csrfToken);
+      expect(res.status).toBe(204);
+      const list = await agent.get('/quotations');
+      expect(list.body.find((q) => q.id === quotation.id)).toBeUndefined();
+    });
+
+    it('returns 404 for a quotation that does not exist', async () => {
+      const res = await agent.delete('/quotations/999999').set('X-CSRF-Token', csrfToken);
+      expect(res.status).toBe(404);
+    });
+
+    it('refuses to delete a superseded quotation', async () => {
+      const { quotation, client, exec } = await createQuotation(agent, csrfToken);
+      await agent.post(`/quotations/${quotation.id}/adjust`).set('X-CSRF-Token', csrfToken).send(adjustBody(client, exec));
+      const res = await agent.delete(`/quotations/${quotation.id}`).set('X-CSRF-Token', csrfToken);
+      expect(res.status).toBe(409);
+    });
+
+    it('reinstates the previous version when the latest version is deleted', async () => {
+      const { quotation, client, exec } = await createQuotation(agent, csrfToken);
+      const adjusted = await agent.post(`/quotations/${quotation.id}/adjust`).set('X-CSRF-Token', csrfToken).send(adjustBody(client, exec));
+      const res = await agent.delete(`/quotations/${adjusted.body.id}`).set('X-CSRF-Token', csrfToken);
+      expect(res.status).toBe(204);
+      const list = await agent.get('/quotations');
+      const original = list.body.find((q) => q.id === quotation.id);
+      expect(original.estatus).toBe('Enviada');
+      expect(original.superseded_by).toBeNull();
+      expect(list.body.find((q) => q.id === adjusted.body.id)).toBeUndefined();
+    });
+  });
 });
