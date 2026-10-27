@@ -135,7 +135,7 @@ export function DocViewPage() {
   return (
     <div>
       <div className="mb-3 flex gap-2 print:hidden">
-        <Button onClick={() => navigate(-1)}>← Volver</Button>
+        <Button onClick={() => navigate(-1)}>Volver</Button>
         <Button variant="primary" onClick={onDownloadPdf} disabled={generating}>
           {generating ? 'Generando…' : 'Descargar PDF'}
         </Button>
