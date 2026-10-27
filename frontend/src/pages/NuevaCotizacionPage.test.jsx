@@ -53,7 +53,7 @@ describe('NuevaCotizacionPage', () => {
     await userEvent.selectOptions(screen.getByLabelText('Cliente'), '1');
     await userEvent.selectOptions(screen.getByLabelText('Ejecutivo comercial'), '1');
     await userEvent.type(screen.getByLabelText('Proyecto'), 'Contenidos de agosto');
-    await userEvent.type(screen.getByPlaceholderText('Ej. Edición de 6 videos para redes sociales'), 'Edición');
+    await userEvent.type(screen.getByPlaceholderText(/Ej. Edición de 6 videos/), 'Edición');
     await userEvent.type(screen.getByLabelText('Monto (antes de impuestos)'), '100');
     await userEvent.click(screen.getByRole('button', { name: 'Generar cotización' }));
     expect(api.post).toHaveBeenCalledWith('/quotations', expect.objectContaining({ proyecto: 'Contenidos de agosto', clientId: '1', executiveId: '1' }));
@@ -77,7 +77,7 @@ describe('NuevaCotizacionPage', () => {
     await userEvent.type(screen.getByLabelText('Teléfono (opcional)'), '5555-1234');
     await userEvent.selectOptions(screen.getByLabelText('Ejecutivo comercial'), '1');
     await userEvent.type(screen.getByLabelText('Proyecto'), 'Contenidos de agosto');
-    await userEvent.type(screen.getByPlaceholderText('Ej. Edición de 6 videos para redes sociales'), 'Edición');
+    await userEvent.type(screen.getByPlaceholderText(/Ej. Edición de 6 videos/), 'Edición');
     await userEvent.type(screen.getByLabelText('Monto (antes de impuestos)'), '100');
     await userEvent.click(screen.getByRole('button', { name: 'Generar cotización' }));
 
